@@ -1,0 +1,32 @@
+# CMake build trees (FetchContent downloads ImGui/ImPlot into build/_deps)
+build/
+build-*/
+cmake-build-*/
+CMakeCache.txt
+CMakeFiles/
+compile_commands.json
+
+# Compiled output
+*.o
+*.a
+*.so
+*.out
+/so_tests
+/so_sim_cli
+/second_opinion
+
+# Arduino build output
+firmware/**/build/
+
+# Debugging artefacts
+/core
+/core.*
+vgcore.*
+
+# Editors and OS
+.vscode/
+.idea/
+.cache/
+*.swp
+*~
+.DS_Store
