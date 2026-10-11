@@ -1,4 +1,4 @@
-# Second Opinion
+# Subsidium
 
 **A camera tiebreaker for lunar lander altimeters.** Three witnesses report altitude: inertial, rangefinder and camera time-to-contact. Best 2 of 3 wins. If no single witness can be blamed, the system assumes the closest ground. Built at hackPHS 2026.
 
