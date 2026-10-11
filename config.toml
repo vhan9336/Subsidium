@@ -18,7 +18,7 @@ hazard_tint = 0.30         # strength of the hazard-map colour over the camera i
 [sensors]                  # 1-sigma noise models used by the integrity monitor
 rf_sigma_mm = 3.0          # rangefinder: fixed part
 rf_sigma_rel = 0.01        #              + 1% of range
-cam_sigma_rel = 0.04       # camera altitude (tau * v): relative error at full quality
+cam_sigma_rel = 0.10       # camera altitude (tau * v): relative error at full quality. Measured on Blue Ghost footage: median 7.2%, p90 15.1%
 nav_sigma_mm = 3.0         # inertial / dead-reckoning altitude at anchor time
 nav_drift_mm_s = 1.0       # inertial drift growth (mm per second since last anchor)
 

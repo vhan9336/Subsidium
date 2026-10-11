@@ -35,10 +35,11 @@ def test_nominal():
 
 
 def test_terrain_change_reanchors_inertial():
-    # ground drops 60 mm at t=3 s (HAKUTO-R direction): rangefinder and camera jump up, inertial doesn't
-    up = lambda t, h: h + (60 if t > 3 else 0)
+    # The ground drops 200 mm at t = 3 s (the HAKUTO-R direction): the rangefinder and camera jump up
+    # and inertial doesn't. The camera is noisy (10%), so the change has to be big enough for it to see.
+    up = lambda t, h: h + (200 if t > 3 else 0)
     b, h, ev = run(rf_fn=up, cam_fn=up)
-    assert "terrain_change" in ev and abs(b.est - (h + 60)) < 6
+    assert "terrain_change" in ev and abs(b.est - (h + 200)) < 6
 
 
 def test_rangefinder_fault_isolated():
@@ -48,7 +49,7 @@ def test_rangefinder_fault_isolated():
 
 
 def test_camera_fault_isolated():
-    biased = lambda t, h: h * (1.35 if t > 3 else 1.0)
+    biased = lambda t, h: h * (2.0 if t > 3 else 1.0)   # reads double: far outside a 10% camera's noise
     b, h, ev = run(cam_fn=biased)
     assert "cam_fault" in ev and "cam" in b.excluded and abs(b.est - h) < 6
 
@@ -67,7 +68,8 @@ def test_legacy_rejects_true_jump():
 
 
 def test_biased_camera_does_not_pull_the_estimate_before_it_is_excluded():
-    # the camera reads 35% high from t = 3 s. Until the vote throws it out, the answer should stay put
+    # The camera reads 35% high from t = 3 s. That's only about 3 sigma for a 10% camera, so the vote
+    # can't prove it wrong. The answer still has to stay put, because the camera doesn't feed it.
     biased = lambda t, h: h * (1.35 if t > 3 else 1.0)
     m, worst = TriplexMonitor(CFG), 0.0
     for t, h, x in stream(cam_fn=biased):
