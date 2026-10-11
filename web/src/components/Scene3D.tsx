@@ -1,19 +1,18 @@
 // The 3D view. One scene unit is 100 mm and y points up.
 //
-// The true lander sits at its real height. The ground under it is a block that rises and drops
-// with the terrain (the rig's slide-in plateau), so "the ground fell away" is something you can
-// see. Each brain's belief is a ghost lander drawn at ground + its estimate, so a ghost below the
-// true lander means that brain thinks it's lower than it really is.
+// The ground never moves. The true lander sits at its real height above it, so when the terrain
+// changes (the rig's plateau slides out) the lander's true height jumps up. Each brain's belief is
+// a ghost lander drawn at its own estimate, so a ghost below the true lander means that brain
+// thinks it's lower than it really is.
 import { Edges, Html, OrbitControls } from "@react-three/drei";
-import { Canvas, useFrame } from "@react-three/fiber";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Component, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import * as THREE from "three";
 import { C, ERR_BAD_MM, mm, signed, unit } from "../theme";
 import type { State } from "../types";
 
 const U = 0.01; // scene units per mm
-const PAD = 3; // side length of the terrain block under the lander
-const DEPTH = 1.4; // how far the block reaches down
+const GROUND = 40; // side length of the ground square
 const TILE = 8; // the ground texture repeats every TILE units
 // The simulated camera is 320x240 px with a focal length of 260 px, and a webcam is close enough.
 const FOV_W = 160 / 260;
@@ -91,36 +90,29 @@ function useShapes() {
     const ticks = [new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 4.6, 0)];
     for (let y = 0; y <= 4.5; y += 0.5) ticks.push(new THREE.Vector3(y % 1 ? -0.1 : -0.2, y, 0), new THREE.Vector3(y % 1 ? 0.1 : 0.2, y, 0));
 
-    // the ground is a big square with a hole where the terrain block sits, so the block can sink out of sight
-    const h = PAD / 2;
-    const ground = new THREE.Shape([[-20, -20], [20, -20], [20, 20], [-20, 20]].map(([x, y]) => new THREE.Vector2(x, y)));
-    ground.holes.push(new THREE.Path([[-h, -h], [-h, h], [h, h], [h, -h]].map(([x, y]) => new THREE.Vector2(x, y))));
-    return { frustumLines, frustumFaces, beam, beamDash, ruler: new THREE.BufferGeometry().setFromPoints(ticks),
-             surface: new THREE.ShapeGeometry(ground) };
+    return { frustumLines, frustumFaces, beam, beamDash, ruler: new THREE.BufferGeometry().setFromPoints(ticks) };
   }, []);
 }
 
 /**
- * The ground texture, repeating every TILE units and lined up with world coordinates, so the block
- * under the lander matches the ground around it. During a mission replay it's the real orbiter
+ * The ground texture, repeating every TILE units. During a mission replay it's the real orbiter
  * photo of the crash site. Photos don't tile, so they're mirrored at the edges.
  */
-function useGround(url: string, repeat: number, offset: number) {
+function useGround(url: string) {
   const [tex, setTex] = useState<THREE.Texture | null>(null);
   useEffect(() => {
     new THREE.TextureLoader().load(url, (t) => {
       t.colorSpace = THREE.SRGBColorSpace;
       t.wrapS = t.wrapT = THREE.MirroredRepeatWrapping;
-      t.repeat.set(repeat, repeat);
-      t.offset.set(offset, offset);
+      t.repeat.set(GROUND / TILE, GROUND / TILE);
       setTex(t);
     });
-  }, [url, repeat, offset]);
+  }, [url]);
   return tex;
 }
 
 // the values the scene eases toward each frame
-type Smooth = { y: number; g: number; legacy: number; so: number; sigma: number; rf: number; nav: number; rfw: number; cam: number };
+type Smooth = { y: number; legacy: number; so: number; sigma: number; rf: number; nav: number; rfw: number; cam: number };
 
 /** A floating label attached to a point in the scene. */
 function Tag({ className, children }: { className: string; children: ReactNode }) {
@@ -146,16 +138,16 @@ function Pip({ color, name, shown, out }: { color: string; name: string; shown: 
 function Rig({ s }: { s: State }) {
   const shapes = useShapes();
   const site = s.scenario?.site ? `/sites/${s.scenario.site.split("/").pop()}` : "/textures/lro_moon.jpg";
-  const surfaceTex = useGround(site, 1 / TILE, 0); // the big square is mapped straight from world coordinates
-  const padTex = useGround(site, PAD / TILE, -PAD / 2 / TILE); // the block's plane is centred, so shift it to match
+  const groundTex = useGround(site);
   const live = useRef(s);
   live.current = s;
   const eased = useRef<Smooth | null>(null);
+  const camera = useThree((state) => state.camera);
+  const controls = useThree((state) => state.controls) as { target: THREE.Vector3 } | null;
 
   // everything that moves is positioned in useFrame, not through React, so it animates smoothly
   const ref = {
     lander: useRef<THREE.Group>(null!),
-    block: useRef<THREE.Group>(null!),
     legacy: useRef<THREE.Group>(null!),
     so: useRef<THREE.Group>(null!),
     band: useRef<THREE.Mesh>(null!),
@@ -163,7 +155,6 @@ function Rig({ s }: { s: State }) {
     beamLen: useRef<THREE.Group>(null!),
     beamEnd: useRef<THREE.Group>(null!),
     frustum: useRef<THREE.Group>(null!),
-    ruler: useRef<THREE.Group>(null!),
     pipNav: useRef<THREE.Group>(null!),
     pipRf: useRef<THREE.Group>(null!),
     pipCam: useRef<THREE.Group>(null!),
@@ -174,8 +165,7 @@ function Rig({ s }: { s: State }) {
     const truth = s.truth ?? s.nav;
     const w = s.so.witness;
     const target: Smooth = {
-      y: s.nav_raw * U, // lander height above the ground as it was at reset
-      g: (s.nav_raw - truth) * U, // where the ground under the lander is now
+      y: truth * U, // the true height above the ground
       legacy: (s.legacy.est ?? truth) * U,
       so: (s.so.est ?? truth) * U,
       sigma: Math.max(s.so.sigma ?? 0, 2) * U,
@@ -188,18 +178,24 @@ function Rig({ s }: { s: State }) {
     const k = 1 - Math.exp(-Math.min(dt, 0.1) * 12);
     (Object.keys(target) as (keyof Smooth)[]).forEach((key) => (c[key] += (target[key] - c[key]) * k));
 
+    // A very tall replay (the HAKUTO-R broadcast is thousands of metres up) would leave the lander
+    // out of frame, so the view rises with it. The rig and the simulator stay under 5.5 units.
+    if (controls) {
+      const lift = 2.3 + Math.max(c.y - 5.5, 0) - controls.target.y;
+      controls.target.y += lift;
+      camera.position.y += lift;
+    }
+
     ref.lander.current.position.y = c.y;
-    ref.block.current.position.y = c.g;
-    ref.legacy.current.position.y = c.g + c.legacy;
-    ref.so.current.position.y = c.g + c.so;
-    ref.band.current.position.y = c.g + c.so;
+    ref.legacy.current.position.y = c.legacy;
+    ref.so.current.position.y = c.so;
+    ref.band.current.position.y = c.so;
     ref.band.current.scale.y = c.sigma * 2;
     ref.beam.current.position.y = c.y;
     ref.beamLen.current.scale.y = c.rf;
     ref.beamEnd.current.position.y = -c.rf;
     ref.frustum.current.position.y = c.y;
-    ref.frustum.current.scale.setScalar(Math.max(c.y - c.g, 0.05));
-    ref.ruler.current.position.y = c.g;
+    ref.frustum.current.scale.setScalar(Math.max(c.y, 0.05));
     ref.pipNav.current.position.y = c.nav;
     ref.pipRf.current.position.y = c.rfw;
     ref.pipCam.current.position.y = c.cam;
@@ -215,25 +211,14 @@ function Rig({ s }: { s: State }) {
 
   return (
     <>
-      <mesh geometry={shapes.surface} rotation-x={-Math.PI / 2} receiveShadow>
+      <mesh rotation-x={-Math.PI / 2} receiveShadow>
+        <planeGeometry args={[GROUND, GROUND]} />
         {/* the key makes three.js rebuild the material once the texture arrives */}
-        <meshStandardMaterial key={surfaceTex?.uuid} map={surfaceTex} color={surfaceTex ? "#fff" : "#77777b"} roughness={1} />
+        <meshStandardMaterial key={groundTex?.uuid} map={groundTex} color={groundTex ? "#fff" : "#77777b"} roughness={1} />
       </mesh>
 
-      {/* the terrain block under the lander. It moves with the plateau and shows the same ground texture. */}
-      <group ref={ref.block}>
-        <mesh rotation-x={-Math.PI / 2} position={[0, 0.002, 0]} receiveShadow>
-          <planeGeometry args={[PAD, PAD]} />
-          <meshStandardMaterial key={padTex?.uuid} map={padTex} color={padTex ? "#fff" : "#77777b"} roughness={1} />
-        </mesh>
-        <mesh position={[0, -DEPTH / 2, 0]}>
-          <boxGeometry args={[PAD - 0.01, DEPTH, PAD - 0.01]} />
-          <meshStandardMaterial color="#4a4c51" roughness={1} />
-        </mesh>
-      </group>
-
       {/* a ruler on the ground with one marker per witness, so you can read the votes off it */}
-      <group ref={ref.ruler} position={[-1.25, 0, 1.25]}>
+      <group position={[-1.25, 0, 1.25]}>
         <lineSegments geometry={shapes.ruler}>
           <lineBasicMaterial color={C.dim} transparent opacity={0.7} />
         </lineSegments>
@@ -321,7 +306,7 @@ export default function Scene3D({ s }: { s: State }) {
         <directionalLight position={[-7, 6, 4]} intensity={2.6} castShadow shadow-mapSize={[1024, 1024]}
           shadow-camera-left={-6} shadow-camera-right={6} shadow-camera-top={6} shadow-camera-bottom={-6} shadow-camera-far={30} />
         <Rig s={s} />
-        <OrbitControls target={[0, 2.3, 0]} autoRotate autoRotateSpeed={0.45} enablePan={false} enableDamping
+        <OrbitControls makeDefault target={[0, 2.3, 0]} autoRotate autoRotateSpeed={0.45} enablePan={false} enableDamping
           minDistance={5} maxDistance={16} maxPolarAngle={Math.PI / 2 - 0.06} />
       </Canvas>
     </Boundary>
