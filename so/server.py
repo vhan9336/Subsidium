@@ -84,6 +84,10 @@ def create_app(pipe: Pipeline) -> FastAPI:
             return FileResponse(WEB / "index.html")
         return PlainTextResponse("The web app isn't built yet. Run: cd web && npm install && npm run build")
 
+    @app.get("/logo.png")
+    def logo():
+        return FileResponse(WEB / "logo.png")
+
     @app.get("/presentation.json")
     def presentation():
         return {"url": pipe.cfg.get("presentation", {}).get("canva_url", "")}

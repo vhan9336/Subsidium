@@ -18,7 +18,7 @@ button { background: none; border: 0; padding: 0; color: inherit; font: inherit;
 button:focus-visible { outline: 2px solid var(--cam); outline-offset: 3px; }
 code { font: 14px Consolas, monospace; color: var(--ink); border-bottom: 1px solid var(--rule); }
 
-.app { height: 100vh; min-height: 660px; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; padding: 0 var(--gutter); }
+.app { height: 100vh; min-height: 660px; display: grid; grid-template-rows: minmax(0, 1fr) auto; padding: 0 var(--gutter); }
 
 /* ---- top bar ---- */
 .bar { display: flex; align-items: baseline; gap: 18px; padding: 14px 0 11px; border-bottom: 1px solid var(--rule); }

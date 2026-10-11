@@ -162,9 +162,6 @@ export default function App() {
 
   return (
     <div className="app">
-      <header className="bar">
-        <h1>Subsidium</h1>
-      </header>
       {notice && <p className="toast" role="status">{notice}</p>}
 
       {s && proof ? <Proof s={s} history={history} reanchored={reanchored} /> : s ? (
