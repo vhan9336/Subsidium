@@ -139,7 +139,7 @@ def create_app(pipe: Pipeline) -> FastAPI:
     def cmd(name: str):
         if name in ("pause", "resume", "restart") or name.startswith("seek:"):
             playback(name)
-        elif name == "reset" or name.startswith("scenario:"):
+        elif name == "reset" or name.startswith(("scenario:", "clip:")):
             with lock:                       # a new run starts the playback clock from zero, and un-pauses
                 history.clear()
                 shared["cursor"] = None

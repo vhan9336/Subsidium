@@ -64,6 +64,11 @@ class Pipeline:
             self.faults.set(name[6:], t)
         elif name.startswith("scenario:"):
             self.start_scenario(name[9:], t)
+        elif name.startswith("clip:"):
+            # picking footage by hand ends any replay that was flying and clears its injected faults
+            self.runner.stop()
+            self.faults.clear()
+            self.src.command(name)
         elif name == "restart":
             # run the current replay again from the top, or just reset if none is running
             sid = self.runner.spec["id"] if self.runner.spec else None

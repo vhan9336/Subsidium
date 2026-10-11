@@ -5,7 +5,7 @@ import FootageHud from "./components/FootageHud";
 import LiveData from "./components/LiveData";
 import Playback, { stepCommand } from "./components/Playback";
 import Proof from "./components/Proof";
-import ScenarioPanel from "./components/ScenarioPanel";
+import ScenarioPanel, { playlist } from "./components/ScenarioPanel";
 import Scene3D from "./components/Scene3D";
 import { cmd, useTelemetry } from "./telemetry";
 import { ERR_BAD_MM, EVENT_LABEL, mm, plainStatus, setUnit, signed, timeToContact, unit } from "./theme";
@@ -110,14 +110,15 @@ export default function App() {
   useEffect(() => setPicked(null), [s?.kind]); // footage and simulator each lead with their own view
 
   // The key handler is set up once, so it reads the latest values through this ref.
-  const latest = useRef({ scenarios, swapViews, playback: s?.playback });
-  latest.current = { scenarios, swapViews, playback: s?.playback };
+  const items = playlist(scenarios, clips);
+  const latest = useRef({ items, swapViews, playback: s?.playback });
+  latest.current = { items, swapViews, playback: s?.playback };
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.ctrlKey || e.metaKey || e.altKey || e.repeat) return;
       if ((e.target as HTMLElement).closest?.("input, textarea")) return; // typing in a box isn't a shortcut
       const k = e.key.toLowerCase();
-      const { scenarios, swapViews, playback } = latest.current;
+      const { items, swapViews, playback } = latest.current;
       if (k === "v") setVoiceOn(voice.toggle());
       else if (k === " " && playback) cmd(playback.paused ? "resume" : "pause");
       else if ((k === "arrowleft" || k === "arrowright") && playback) cmd(stepCommand(playback, k === "arrowleft" ? -1 : 1));
@@ -131,7 +132,7 @@ export default function App() {
       else if (KEYS[k]) {
         if (k === "r") setLog([]);
         cmd(KEYS[k]);
-      } else if (Number(k) >= 1 && Number(k) <= scenarios.length) cmd(`scenario:${scenarios[Number(k) - 1].id}`);
+      } else if (Number(k) >= 1 && items[Number(k) - 1]) cmd(items[Number(k) - 1].command);
     };
     addEventListener("keydown", onKey);
     return () => removeEventListener("keydown", onKey);
@@ -179,7 +180,7 @@ export default function App() {
             <aside className="right">
               <p className="mission">
                 {sc ? <><b>{sc.name}</b> {sc.mission}</> : clip ? <><b>{clip.name}</b> {clip.mission}</>
-                  : <>Press <b>1</b> to <b>{Math.max(scenarios.length, 1)}</b> to replay a landing through both brains. Press <b>E</b> for the presentation.</>}
+                  : <>Press <b>1</b> to <b>{Math.max(items.length, 1)}</b> to replay a landing through both brains. Press <b>E</b> for the presentation.</>}
               </p>
               <h2 className={tone}>{line}</h2>
               <p className="then">{consequence(legacyErr, soErr)}</p>

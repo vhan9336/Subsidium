@@ -18,6 +18,29 @@ const FAULTS: [string, string][] = [
   ["cam_blind", "Camera blind"],
 ];
 
+export type PlaylistItem = { command: string; name: string; detail: string; hint?: string; scenarioId?: string; clipId?: string };
+
+/**
+ * Everything the number keys can start, in order: the mission replays, then any real-footage clips
+ * (there are clips only when the engine runs with --video). The bottom bar and the keys share this list.
+ */
+export function playlist(scenarios: ScenarioInfo[], clips: ClipInfo[], mixed = false): PlaylistItem[] {
+  const replays = scenarios.map((sc) => ({
+    command: `scenario:${sc.id}`,
+    scenarioId: sc.id,
+    name: sc.name,
+    detail: [sc.mission?.split(" · ").pop(), mixed && (sc.clip ? "real broadcast" : sc.footage ? "real footage" : "simulator")].filter(Boolean).join(" · "),
+  }));
+  const footage = clips.map((c) => ({
+    command: `clip:${c.id}`,
+    clipId: c.id,
+    name: c.name,
+    detail: c.truth ? "real footage" : "real footage, camera only",
+    hint: c.truth ? "Has an altitude record, so all three witnesses run" : "No altitude record: camera tracking only",
+  }));
+  return [...replays, ...footage];
+}
+
 export default function ScenarioPanel({ s, scenarios, clips, voiceOn, onVoice, proof, onProof, onExplain }: {
   s: State | null;
   scenarios: ScenarioInfo[];
@@ -28,31 +51,20 @@ export default function ScenarioPanel({ s, scenarios, clips, voiceOn, onVoice, p
   onProof: () => void;
   onExplain: () => void;
 }) {
-  const active = s?.scenario ?? null;
   const mixed = scenarios.some((sc) => sc.footage); // real footage is loaded: say what each replay flies on
+  const items = playlist(scenarios, clips, mixed);
+  const isOn = (item: PlaylistItem) => (item.clipId ? s?.clip?.id === item.clipId && !s?.scenario : s?.scenario?.id === item.scenarioId);
   return (
     <footer className="deck">
-      <nav className="missions" aria-label="Mission replays">
-        {scenarios.map((sc, i) => (
-          <button key={sc.id} className={active?.id === sc.id ? "on" : ""} onClick={() => cmd(`scenario:${sc.id}`)}>
+      <nav className="missions" aria-label="Replays and footage">
+        {items.map((item, i) => (
+          <button key={item.command} className={isOn(item) ? "on" : ""} onClick={() => cmd(item.command)} title={item.hint}>
             <i>{i + 1}</i>
-            <span>{sc.name}</span>
-            <small>{sc.mission?.split(" · ").pop()}{mixed && <em>{sc.clip ? "real broadcast" : sc.footage ? "real footage" : "simulator"}</em>}</small>
+            <span>{item.name}</span>
+            <small>{item.detail}</small>
           </button>
         ))}
       </nav>
-      {/* with real footage loaded, a clip with no replay of its own can be picked here */}
-      {clips.length > 1 && (
-        <nav className="clips" aria-label="Footage">
-          <span>Footage</span>
-          {clips.map((c) => (
-            <button key={c.id} className={s?.clip?.id === c.id ? "on" : ""} onClick={() => cmd(`clip:${c.id}`)}
-              title={c.truth ? "Has an altitude record, so all three witnesses run" : "No altitude record: camera tracking only"}>
-              {c.name}
-            </button>
-          ))}
-        </nav>
-      )}
       <span className="tools">
         <button className="math" onClick={onExplain}>Presentation <i>E</i></button>
         <button className={`math ${proof ? "on" : ""}`} onClick={onProof}>{proof ? "Back to the landing" : "The math"} <i>M</i></button>
@@ -70,7 +82,7 @@ export default function ScenarioPanel({ s, scenarios, clips, voiceOn, onVoice, p
         ))}
         <button onClick={() => cmd("fault:clear")}>Clear <i>0</i></button>
         <span className="spacer" />
-        {active && <button onClick={() => cmd("scenario:stop")}>End replay</button>}
+        {s?.scenario && <button onClick={() => cmd("scenario:stop")}>End replay</button>}
         <button className={s?.recording ? "on rec" : ""} onClick={() => cmd(s?.recording ? "record_stop" : "record_start")}>
           {s?.recording ? "Recording" : "Record"}
         </button>
