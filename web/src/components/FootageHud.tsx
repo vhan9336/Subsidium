@@ -35,6 +35,12 @@ export default function FootageHud({ s, verdict, tone }: { s: State; verdict: st
       </div>
       <p className={`hud-verdict ${tone}`}>{verdict}</p>
 
+      {s.hazard_shown && s.hazard && (
+        <p className="hud-legend" title="The camera's picture is split into tiles. Each tile's height above the ground is worked out from how fast it grows as the lander descends.">
+          <i /> level ground <b>to</b> sticks up <span>◎ safest spot to land</span>
+        </p>
+      )}
+
       <div className="tape" aria-hidden="true">
         {ticks.map((v) => <span key={v} className="tape-tick" style={at(v)}>{mm(v)}</span>)}
         {s.truth != null && <i className="tape-truth" style={at(s.truth)} />}

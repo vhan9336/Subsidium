@@ -68,7 +68,8 @@ export type State = {
   legacy: Brain;
   so: Subsidium;
   hazard: number[][] | null;
-  site: [number, number] | null;
+  site: [number, number] | null; // the safest tile of the hazard grid, as [row, column]
+  hazard_shown: boolean; // whether the grid is drawn over this camera image
   faults: string[];
   scenario: ScenarioState | null;
   events: string[];

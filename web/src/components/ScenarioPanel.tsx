@@ -21,8 +21,10 @@ const FAULTS: [string, string][] = [
 export type PlaylistItem = { command: string; name: string; detail: string; hint?: string; scenarioId?: string; clipId?: string };
 
 /**
- * Everything the number keys can start, in order: the mission replays, then any real-footage clips
- * (there are clips only when the engine runs with --video). The bottom bar and the keys share this list.
+ * Everything the number keys can start, in order: any real-footage clips, then the mission replays
+ * (there are clips only when the engine runs with --video). Real footage comes first, to show what
+ * Subsidium does. The replays follow: the healthy baseline, then the four crashes. The bottom bar
+ * and the number keys share this list.
  */
 export function playlist(scenarios: ScenarioInfo[], clips: ClipInfo[], mixed = false): PlaylistItem[] {
   const replays = scenarios.map((sc) => ({
@@ -38,7 +40,7 @@ export function playlist(scenarios: ScenarioInfo[], clips: ClipInfo[], mixed = f
     detail: c.truth ? "real footage" : "real footage, camera only",
     hint: c.truth ? "Has an altitude record, so all three witnesses run" : "No altitude record: camera tracking only",
   }));
-  return [...replays, ...footage];
+  return [...footage, ...replays];
 }
 
 export default function ScenarioPanel({ s, scenarios, clips, voiceOn, onVoice, proof, onProof, onExplain }: {

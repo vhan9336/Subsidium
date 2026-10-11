@@ -105,7 +105,9 @@ def create_app(pipe: Pipeline) -> FastAPI:
             sc = st["score"]
             rows.append({"id": sid, "legacy_max": sc["legacy"]["max"], "legacy_last": sc["legacy"]["last"] or 0.0,
                          "so_max": sc["so"]["max"], "so_last": sc["so"]["last"] or 0.0,
-                         "ok": passed(st, events, want), "events": sorted({e for _, e in events})})
+                         "ok": passed(st, events, want),
+                         # what Subsidium announced and when, without the routine camera lock
+                         "events": [[t, e] for t, e in events if e != "cam_lock" and not e.startswith("legacy")]})
         scorecard["rows"] = rows
 
     @app.get("/proof")

@@ -19,12 +19,12 @@ cd web && npm install && npm run build && cd ..
 python -m so serve --sim                                 # then open http://localhost:8000
 ```
 
-Press 1 to 5 to run a replay: Nominal, HAKUTO-R M1, Resilience, Odysseus, Athena. With `--video` (below), 6 and 7 play the real footage clips. The bar under the picture restarts the replay, pauses it and scrubs back through the last minute. Press M for the math behind the verdict and E for the presentation.
+The number keys run the replays: Nominal, then the four crashes (HAKUTO-R M1, Resilience, Odysseus, Athena). With `--video` (below), 1 and 2 are real footage and the replays follow. The bar under the picture restarts the replay, pauses it and scrubs back through the last minute. Press M for the math behind the verdict and E for the presentation.
 
 | Key | Does |
 |---|---|
-| 1 to 5 | Run a mission replay |
-| 6, 7 | Play a real footage clip (Blue Ghost, Perseverance), when started with `--video` |
+| 1, 2 | Play real footage (Blue Ghost, Perseverance) when started with `--video`. Without it, the numbers start at the replays |
+| next 5 | The replays: Nominal, then the four crashes (HAKUTO-R, Resilience, Odysseus, Athena) |
 | M | Show or hide the math screen |
 | E | Open the Canva presentation (set `canva_url` in `config.toml`, or paste the link the first time) |
 | Space | Pause or resume the run |

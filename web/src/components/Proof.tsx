@@ -3,13 +3,13 @@
 // gate's rule beside it, and where each number on screen comes from. It's the answer to "prove it".
 import { useEffect, useState, type MutableRefObject } from "react";
 import { NAME, SENSORS, origin, type Sensor } from "../readings";
-import { mm, signed, timeToContact, unit } from "../theme";
+import { EVENT_LABEL, mm, signed, timeToContact, unit } from "../theme";
 import type { State } from "../types";
 import AltitudePlot from "./AltitudePlot";
 import Lanes from "./Lanes";
 import VoteTriangle from "./VoteTriangle";
 
-type ScoreRow = { id: string; legacy_max: number; legacy_last: number; so_max: number; so_last: number; ok: boolean };
+type ScoreRow = { id: string; legacy_max: number; legacy_last: number; so_max: number; so_last: number; ok: boolean; events: [number, string][] };
 // the tuned settings from config.toml, as /proof sends them
 type Config = {
   sensors: { rf_sigma_mm: number; rf_sigma_rel: number; cam_sigma_rel: number; nav_sigma_mm: number; nav_drift_mm_s: number };
@@ -173,13 +173,14 @@ export default function Proof({ s, history, reanchored }: { s: State; history: M
         <h4>6. Every replay, scored <span>simulator, engine mm · same as <code>python -m so check</code></span></h4>
         {data?.scorecard ? (
           <table>
-            <thead><tr><th>Replay</th><th>Legacy worst / final</th><th>Subsidium worst / final</th><th /></tr></thead>
+            <thead><tr><th>Replay</th><th>Legacy worst / final</th><th>Subsidium worst / final</th><th>Subsidium said</th><th /></tr></thead>
             <tbody>
               {data.scorecard.map((r) => (
                 <tr key={r.id}>
                   <td>{r.id}</td>
                   <td>{r.legacy_max.toFixed(0)} / {r.legacy_last.toFixed(0)}</td>
                   <td>{r.so_max.toFixed(0)} / {r.so_last.toFixed(0)}</td>
+                  <td>{r.events.length ? r.events.map(([at, e]) => `${(EVENT_LABEL[e] ?? e).toLowerCase()} at ${at} s`).join(", ") : "nothing needed"}</td>
                   <td className={r.ok ? "pass" : "fail"}>{r.ok ? "pass" : "FAIL"}</td>
                 </tr>
               ))}
@@ -196,6 +197,58 @@ export default function Proof({ s, history, reanchored }: { s: State; history: M
           {!s.clip && <li>Simulated rig: every reading is generated, and the true altitude is known exactly.</li>}
         </ul>
       </section>
+
+      <section className="wide">
+        <h4>8. The hazard grid <span>the picture split into tiles, each tile's height above the ground</span></h4>
+        <HazardTable s={s} />
+      </section>
+
+      <section>
+        <h4>9. How accurate the camera is <span>time to contact, scored on real and synthetic footage</span></h4>
+        <table>
+          <thead><tr><th>Footage</th><th>Median error</th><th>90th percentile</th><th>Bias</th></tr></thead>
+          <tbody>
+            <tr><td>Blue Ghost, real</td><td>7.2%</td><td>15.1%</td><td>+6.3%</td></tr>
+            <tr><td>Synthetic descent</td><td>0.3%</td><td>0.5%</td><td>+0.3%</td></tr>
+          </tbody>
+        </table>
+        <p className="fine">
+          Blue Ghost's cameras look sideways, so one gain was fitted on the first 4 s and the rest scored without refitting;
+          65% of frames had a reading. These come from <code>eval/run_video.py</code>, and the camera noise in
+          <code> config.toml</code> (10%) is set from the real row.
+        </p>
+      </section>
     </main>
+  );
+}
+
+/** The hazard grid as numbers: each tile's height above the ground, as a percent of altitude. The safest tile is ringed. */
+function HazardTable({ s }: { s: State }) {
+  if (!s.hazard) return <p className="fine">No grid yet. The camera needs to be locked and descending.</p>;
+  return (
+    <>
+      <table className="grid">
+        <tbody>
+          {s.hazard.map((row, i) => (
+            <tr key={i}>
+              {row.map((v, j) => {
+                const known = v > -0.99; // the engine sends -1 for a tile with no data
+                const heat = Math.min(Math.abs(v) / 0.08, 1); // 8% of altitude is fully red, like the picture
+                return (
+                  <td key={j} className={s.site?.[0] === i && s.site?.[1] === j ? "safest" : ""}
+                    style={known ? { background: `hsl(${120 * (1 - heat)} 55% 28%)` } : undefined}>
+                    {known ? `${v > 0 ? "+" : ""}${(v * 100).toFixed(0)}` : "·"}
+                  </td>
+                );
+              })}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <p className="fine">
+        Percent of altitude above the ground plane. Green is level, red sticks up or dips by 8% or more, a dot means no data.
+        The ringed tile is the safest place to land{s.hazard_shown ? "" : ". This footage is too oblique for the grid to be drawn on the picture"}.
+      </p>
+    </>
   );
 }

@@ -171,7 +171,7 @@ class Pipeline:
             "so": {"est": so.est, "sigma": so.sigma, "status": so.status, "excluded": so.excluded,
                    **{k: so.detail[k] for k in ("pairs", "gate", "cam_abstain", "witness")}},
             "hazard": None if res.hazard is None else np.nan_to_num(res.hazard, nan=-1).round(3).tolist(),
-            "site": res.site, "faults": self.faults.active, "scenario": self.runner.state(t),
+            "site": res.site, "hazard_shown": self.src.show_hazard, "faults": self.faults.active, "scenario": self.runner.state(t),
             "events": legacy.events + so.events, "score": self.score,
         }
         if self.log:

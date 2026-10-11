@@ -277,3 +277,15 @@ h4 span { margin-left: 10px; font-weight: 400; font-size: 13px; color: var(--dim
 .three dt span { font-size: 13px; }
 
 .deck .tools { grid-column: 2; grid-row: 1; display: flex; gap: 26px; justify-self: end; align-self: center; }
+
+/* legend for the hazard grid drawn over the footage */
+.hud-legend { position: absolute; left: 22px; bottom: 14px; display: flex; align-items: center; gap: 8px; font: 600 12px var(--body); color: var(--ink); padding: 4px 10px; background: rgba(0, 0, 0, 0.7); }
+.hud-legend i { width: 54px; height: 8px; background: linear-gradient(90deg, rgb(0, 190, 40), rgb(255, 0, 40)); }
+.hud-legend b { font-weight: 400; color: var(--dim); } .hud-legend span { margin-left: 8px; }
+.hud.broadcast .hud-legend { display: none; }
+
+/* hazard grid table on the math screen */
+.proof section.wide { grid-column: span 2; }
+.proof table.grid { width: auto; table-layout: fixed; border-collapse: separate; border-spacing: 2px; }
+.proof table.grid td { width: 52px; height: 30px; padding: 0; text-align: center; border: 0; color: var(--ink); font: 13px var(--display); }
+.proof table.grid td.safest { outline: 2px solid var(--ink); outline-offset: -2px; font-weight: 700; }
