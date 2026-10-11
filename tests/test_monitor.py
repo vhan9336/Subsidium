@@ -64,3 +64,13 @@ def test_legacy_rejects_true_jump():
     for t, h, x in stream(rf_fn=lambda t, h: h + (60 if t > 3 else 0)):
         b = m.step(x)
     assert b.status == "RF DECLARED FAILED" and b.est < h + 60 - 50   # believes it is ~60 mm lower
+
+
+def test_biased_camera_does_not_pull_the_estimate_before_it_is_excluded():
+    # the camera reads 35% high from t = 3 s. Until the vote throws it out, the answer should stay put
+    biased = lambda t, h: h * (1.35 if t > 3 else 1.0)
+    m, worst = TriplexMonitor(CFG), 0.0
+    for t, h, x in stream(cam_fn=biased):
+        b = m.step(x)
+        worst = max(worst, abs(b.est - h))
+    assert worst < 8

@@ -38,6 +38,8 @@ class HybridSource(Source):
 
     def use(self, footage: bool, clip: str | None = None):
         """Pick what the next replay flies on."""
+        if clip and clip not in self.video.clips:
+            footage = False              # its own broadcast isn't downloaded, so the simulator flies it
         new = self.video if footage else self.sim
         if footage:
             self.video.command(f"clip:{clip or self.home}")

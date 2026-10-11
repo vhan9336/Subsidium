@@ -26,6 +26,7 @@ nav_drift_mm_s = 1.0       # inertial drift growth (mm per second since last anc
 window_s = 0.5             # test statistics are averaged over this window
 chi2_gate = 9.0            # mean normalised residual^2 above this = pair inconsistent (3 sigma)
 persist_s = 0.6            # an isolation must hold this long (longer than camera transients)
+smooth_gain = 0.3          # how far the estimate moves toward each new fused reading (the rest is carried on by inertial)
 
 [legacy]
 gate_mm = 30.0             # textbook innovation gate

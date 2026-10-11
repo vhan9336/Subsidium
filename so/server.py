@@ -87,7 +87,8 @@ def create_app(pipe: Pipeline) -> FastAPI:
         both = hasattr(pipe.src, "use")           # footage plus simulator: say which one each replay flies on
         keys = ("id", "name", "mission", "summary", "setup", "expect", "source")
         return [{**{k: s.get(k) for k in keys},
-                 "footage": s.get("footage", True) if both else pipe.src.kind == "video",
+                 "footage": (s.get("footage", True) and s.get("clip") in (None, *pipe.src.video.clips)) if both
+                            else pipe.src.kind == "video",
                  "clip": s.get("clip") if both and s.get("clip") in pipe.src.video.clips else None}
                 for s in pipe.scenarios.values()]
 

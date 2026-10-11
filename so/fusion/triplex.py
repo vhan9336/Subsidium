@@ -45,6 +45,7 @@ class TriplexMonitor:
         self.cam_rel = s["cam_sigma_rel"]
         self.nav_sigma, self.nav_drift = s["nav_sigma_mm"], s["nav_drift_mm_s"]
         self.window, self.gate, self.persist = m["window_s"], m["chi2_gate"], m["persist_s"]
+        self.smooth_gain = m["smooth_gain"]
         self.min_quality = cfg["camera"]["min_quality"]
         self.reset()
 
@@ -56,7 +57,10 @@ class TriplexMonitor:
         self.cam_flip_t = None         # when the camera started to change its mind
         self.cam_seen = False
         self.hist = collections.deque()          # (time, {pair: r2}) over the averaging window
+        self.mode_changed = False
         self.cand, self.cand_t = None, 0.0       # the verdict we're waiting to confirm, and since when
+        self.smoothed = None                     # the filtered estimate, and the inertial reading it was last carried on from
+        self.prev_nav = None
 
     def witnesses(self, x: Inputs):
         """Each available sensor as (altitude, sigma), and whether the camera can be used."""
@@ -93,6 +97,21 @@ class TriplexMonitor:
         if not den:
             return None, None
         return sum(w[k][0] / w[k][1] ** 2 for k in use) / den, math.sqrt(1 / den)
+
+    def smooth(self, z: float, sigma: float, x: Inputs) -> float:
+        """Calms the fused reading's noise by carrying the last answer forward with inertial.
+
+        Inertial is smooth from one tick to the next, so the last estimate plus how far inertial says
+        we've moved is a good guess for now. We nudge that guess toward the new fused reading. If the
+        reading is further off than its noise explains (the ground really changed), we jump to it.
+        """
+        guess = None if self.smoothed is None else self.smoothed + (x.h_nav - self.prev_nav)
+        self.prev_nav = x.h_nav
+        if guess is None or (z - guess) ** 2 > self.gate * sigma ** 2:
+            self.smoothed = z
+        else:
+            self.smoothed = guess + self.smooth_gain * (z - guess)
+        return self.smoothed
 
     def debounce_camera(self, x: Inputs, cam_ok: bool, events: list):
         """The camera has to stay gone for `persist` seconds to count as abstaining. Coming back is instant."""
@@ -137,6 +156,7 @@ class TriplexMonitor:
         have = {p: v is not None for p, v in stats.items()}
 
         cand = self.candidate(w, bad, have)
+        mode_before = self.mode
         if cand is None or cand == self.mode:
             self.cand = None
         elif self.confirmed(cand, x.t):
@@ -147,6 +167,7 @@ class TriplexMonitor:
                 self.offset += fused - w["nav"][0]
                 self.t_anchor = x.t
                 self.hist.clear()
+                self.smoothed = None
                 w["nav"] = (fused, self.nav_sigma)
                 self.mode = "NOMINAL"
                 events.append("terrain_change")
@@ -155,13 +176,23 @@ class TriplexMonitor:
                 events.append("rf_back" if cand == "NOMINAL" and prev == "RF_LOST" else EVENT[cand])
             self.cand = None
 
+        self.mode_changed = self.mode != mode_before   # a new verdict starts the smoothing over
         excluded = {"RF": ["rf"], "CAM": ["cam"], "RF_LOST": ["rf"]}.get(self.mode, [])
         if self.mode == "UNRESOLVED":
             # nobody to blame, so brake for the lowest reading: hitting the ground early beats late
             est = min(h for h, _ in w.values())
             sigma = max(h for h, _ in w.values()) - est
+            self.smoothed = None
         else:
-            est, sigma = self.fuse(w, [k for k in w if k not in excluded])
+            use = [k for k in w if k not in excluded]
+            if self.mode == "NOMINAL" and "rf" in w:
+                # The camera is the least precise witness (4% against the rangefinder's 1%), so while
+                # inertial and the rangefinder are in good order it only votes. It doesn't blur the answer.
+                use = [k for k in use if k != "cam"]
+            est, sigma = self.fuse(w, use)
+            if self.mode_changed:
+                self.smoothed = None
+            est = self.smooth(est, sigma, x)
         status = STATUS[self.mode] + (" · CAMERA ABSTAINING" if self.cam_abstain else "")
         detail = {
             "witness": {k: {"h": h, "sigma": s} for k, (h, s) in w.items()},

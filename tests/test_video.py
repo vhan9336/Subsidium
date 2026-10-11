@@ -96,6 +96,8 @@ def test_lagging_rangefinder_does_not_replay_readings_from_before_a_reset():
     assert all(st["rf"] < 1000 for st in (pipe.tick() for _ in range(200)))
 
 
+@pytest.mark.skipif(not (ROOT / "footage" / "broadcasts" / "hakuto_r_m1.mp4").exists(),
+                    reason="broadcast not downloaded (python tools/fetch_data.py broadcasts)")
 def test_hakuto_r_on_its_own_broadcast_telemetry():
     states = run_replay("hakuto_r_m1", seconds=30.0)
     end = states[-1]
