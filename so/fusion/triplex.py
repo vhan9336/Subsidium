@@ -1,27 +1,25 @@
-"""Subsidium: 2-of-3 integrity monitor over three *dissimilar* altitude witnesses.
+"""Subsidium: three altitude witnesses vote, and the odd one out gets ignored.
 
-    NAV  inertial / dead-reckoned altitude      drifts; blind to terrain changes
-    RF   rangefinder                            precise; can degrade, lag, freeze, drop out
-    CAM  camera time-to-contact x descent rate  scale-free; fails in low contrast / harsh shadow
+    NAV  inertial     smooth, but drifts, and it can't see the ground change under it
+    RF   rangefinder  precise, but can degrade, lag, freeze or go silent
+    CAM  camera       altitude = time to contact x speed. Fails in low contrast or harsh shadow
 
-Each pair is checked with a normalised residual (a chi-square test) using each sensor's own
-noise model, averaged over a short window:
+Every pair gets a normalised error test, using each sensor's own noise level:
 
-    r²(a, b) = (h_a - h_b)² / (σ_a² + σ_b²)
+    r2(a, b) = (h_a - h_b)^2 / (sigma_a^2 + sigma_b^2)
 
-Isolation is triplex parity voting, as in redundant fly-by-wire sensors: the faulty witness is
-the one that appears in both failing pairs while the third pair still agrees.
+An r2 above the gate (9, which is 3 sigma) means the two disagree by more than noise explains.
+Then it's triplex parity voting, like redundant sensors in a fly-by-wire jet. The broken
+sensor is the one that shows up in both failing pairs while the third pair still agrees:
 
-    NAV-RF ✗  NAV-CAM ✗  RF-CAM ✓   ->  inertial is wrong (real terrain change): re-anchor it
-    NAV-RF ✗  RF-CAM ✗   NAV-CAM ✓  ->  rangefinder fault: exclude it
-    NAV-CAM ✗ RF-CAM ✗   NAV-RF ✓   ->  camera fault: exclude it
-    all ✗                            ->  unresolved: assume the closest ground (fail-safe)
+    NAV-RF fails, NAV-CAM fails, RF-CAM agrees   inertial is wrong (real terrain change), re-anchor it
+    NAV-RF fails, RF-CAM fails, NAV-CAM agrees   rangefinder is wrong, ignore it
+    NAV-CAM fails, RF-CAM fails, NAV-RF agrees   camera is wrong, ignore it
+    all three fail                               nobody to blame, so assume the closest ground
 
-With only two witnesses (camera abstaining, or rangefinder silent) a disagreement can be
-*detected* but not *isolated*, and the monitor says so instead of guessing.
+With only two witnesses (camera abstaining, rangefinder silent) a disagreement can be spotted
+but not pinned on anyone. The monitor says that instead of guessing.
 """
-from __future__ import annotations
-
 import collections
 import math
 
@@ -35,151 +33,201 @@ STATUS = {
     "RF_LOST": "RANGEFINDER SILENT",
     "UNRESOLVED": "UNRESOLVED · ASSUMING CLOSEST GROUND",
 }
+# the event announced when the monitor moves into each mode
+EVENT = {"RF": "rf_fault", "CAM": "cam_fault", "RF_LOST": "rf_dropout",
+         "UNRESOLVED": "unresolved", "NOMINAL": "recovered"}
 
 
 class TriplexMonitor:
-    name = "Subsidium"
-
     def __init__(self, cfg: dict):
         s, m = cfg["sensors"], cfg["monitor"]
-        self.rf_s, self.rf_rel = s["rf_sigma_mm"], s["rf_sigma_rel"]
-        self.cam_rel, self.nav_s, self.nav_drift = s["cam_sigma_rel"], s["nav_sigma_mm"], s["nav_drift_mm_s"]
+        self.rf_sigma, self.rf_rel = s["rf_sigma_mm"], s["rf_sigma_rel"]
+        self.cam_rel = s["cam_sigma_rel"]
+        self.nav_sigma, self.nav_drift = s["nav_sigma_mm"], s["nav_drift_mm_s"]
         self.window, self.gate, self.persist = m["window_s"], m["chi2_gate"], m["persist_s"]
-        self.min_q = cfg["camera"]["min_quality"]
+        self.smooth_gain, self.evidence_gate = m["smooth_gain"], m["evidence_gate"]
+        self.cam_memory = cfg["camera"]["lookback_s"]    # how long a camera reading stays correlated with the last one
+        self.min_quality = cfg["camera"]["min_quality"]
         self.reset()
 
     def reset(self):
-        self.offset = 0.0              # correction added to NAV after a confirmed terrain change
-        self.t_anchor = None
+        self.offset = 0.0              # correction added to inertial after a confirmed terrain change
+        self.t_anchor = None           # when inertial was last corrected; its drift is counted from here
         self.mode = "NOMINAL"
-        self.cam_abstain = True        # until the camera first locks on
-        self._cam_flip_t = None
-        self._cam_ever = False
-        self.hist: collections.deque = collections.deque()
-        self._cand, self._cand_t = None, 0.0
-        self.last_est = None
+        self.cam_abstain = True        # the camera sits out until it first locks on
+        self.cam_flip_t = None         # when the camera started to change its mind
+        self.cam_seen = False
+        self.hist = collections.deque()          # (time, {pair: r2}) over the averaging window
+        self.mode_changed = False
+        self.evidence = 0.0                      # camera's running case for "inertial is wrong" (+) or "rangefinder is wrong" (-)
+        self.last_t = None
+        self.cand, self.cand_t = None, 0.0       # the verdict we're waiting to confirm, and since when
+        self.smoothed = None                     # the filtered estimate, and the inertial reading it was last carried on from
+        self.prev_nav = None
 
-    # ---- helpers -------------------------------------------------------------------------
-    def _witnesses(self, x: Inputs):
-        w = {"nav": (x.h_nav + self.offset,
-                     math.hypot(self.nav_s, self.nav_drift * (x.t - self.t_anchor)))}
+    def witnesses(self, x: Inputs):
+        """Each available sensor as (altitude, sigma), and whether the camera can be used."""
+        drift = self.nav_drift * (x.t - self.t_anchor)
+        w = {"nav": (x.h_nav + self.offset, math.hypot(self.nav_sigma, drift))}
         if x.rf is not None and x.rf > 0:
-            w["rf"] = (x.rf, self.rf_s + self.rf_rel * x.rf)
-        cam_ok = x.tau is not None and x.cam_q >= self.min_q and x.v > 1.0
+            w["rf"] = (x.rf, self.rf_sigma + self.rf_rel * x.rf)
+        cam_ok = x.tau is not None and x.cam_q >= self.min_quality and x.v > 1.0
         if cam_ok:
             h = x.tau * x.v
             w["cam"] = (h, self.cam_rel * h / max(x.cam_q, 0.3))
         return w, cam_ok
 
-    def _pair_stats(self, t: float):
+    def pair_stats(self, t: float) -> dict:
+        """Each pair's r2 averaged over the last window. None if there isn't enough data yet."""
         while self.hist and t - self.hist[0][0] > self.window:
             self.hist.popleft()
         out = {}
-        n = len(self.hist)
         for p in PAIRS:
-            vals = [h[1][p] for h in self.hist if p in h[1]]
-            out[p] = sum(vals) / len(vals) if n and len(vals) >= max(3, n // 2) else None
+            vals = [r2[p] for _, r2 in self.hist if p in r2]
+            out[p] = sum(vals) / len(vals) if len(vals) >= max(3, len(self.hist) // 2) else None
         return out
 
-    def _vote(self, cand: str, t: float) -> bool:
-        if cand != self._cand:
-            self._cand, self._cand_t = cand, t
-        return t - self._cand_t >= self.persist
+    def confirmed(self, cand: str, t: float) -> bool:
+        """A verdict only counts once it has held for `persist` seconds, so one bad frame can't flip it."""
+        if cand != self.cand:
+            self.cand, self.cand_t = cand, t
+        return t - self.cand_t >= self.persist
 
     @staticmethod
-    def _fuse(w: dict, use):
-        num = den = 0.0
-        for k in use:
-            h, s = w[k]
-            num += h / s ** 2
-            den += 1 / s ** 2
-        return (num / den, math.sqrt(1 / den)) if den else (None, None)
+    def fuse(w: dict, use):
+        """Average the chosen sensors, trusting the more certain ones more (inverse variance)."""
+        den = sum(1 / w[k][1] ** 2 for k in use)
+        if not den:
+            return None, None
+        return sum(w[k][0] / w[k][1] ** 2 for k in use) / den, math.sqrt(1 / den)
 
-    # ---- main ----------------------------------------------------------------------------
+    def smooth(self, z: float, sigma: float, x: Inputs) -> float:
+        """Calms the fused reading's noise by carrying the last answer forward with inertial.
+
+        Inertial is smooth from one tick to the next, so the last estimate plus how far inertial says
+        we've moved is a good guess for now. We nudge that guess toward the new fused reading. If the
+        reading is further off than its noise explains (the ground really changed), we jump to it.
+        """
+        guess = None if self.smoothed is None else self.smoothed + (x.h_nav - self.prev_nav)
+        self.prev_nav = x.h_nav
+        if guess is None or (z - guess) ** 2 > self.gate * sigma ** 2:
+            self.smoothed = z
+        else:
+            self.smoothed = guess + self.smooth_gain * (z - guess)
+        return self.smoothed
+
+    def debounce_camera(self, x: Inputs, cam_ok: bool, events: list):
+        """The camera has to stay gone for `persist` seconds to count as abstaining. Coming back is instant."""
+        if cam_ok != self.cam_abstain:
+            self.cam_flip_t = None
+            return
+        self.cam_flip_t = self.cam_flip_t or x.t
+        if x.t - self.cam_flip_t >= (0.0 if cam_ok else self.persist):
+            self.cam_abstain = not cam_ok
+            self.cam_flip_t = None
+            if x.v > 1.0:
+                events.append("cam_abstain" if self.cam_abstain else ("cam_back" if self.cam_seen else "cam_lock"))
+            self.cam_seen = self.cam_seen or cam_ok
+
+    def weigh_camera(self, r2: dict, nav_rf_bad: bool, t: float):
+        """Builds up the camera's case when inertial and the rangefinder disagree.
+
+        A noisy camera can't settle a disagreement in one look: it's only a little nearer to the
+        right answer than the wrong one. But each look adds a little evidence, so we keep a running
+        total. Positive means the camera sits closer to the rangefinder (inertial is wrong),
+        negative means closer to inertial (the rangefinder is wrong).
+        """
+        dt = 0.0 if self.last_t is None else t - self.last_t
+        self.last_t = t
+        if nav_rf_bad and ("nav", "cam") in r2 and ("rf", "cam") in r2:
+            # readings from one moment to the next aren't independent, so count a look as worth dt / cam_memory
+            self.evidence += 0.5 * (r2[("nav", "cam")] - r2[("rf", "cam")]) * dt / self.cam_memory
+            limit = 2 * self.evidence_gate
+            self.evidence = max(-limit, min(limit, self.evidence))
+        elif not nav_rf_bad:
+            self.evidence = 0.0
+
+    def candidate(self, w: dict, bad: dict, have: dict):
+        """Today's verdict from the pair tests, or None to keep the current one."""
+        if "rf" not in w:
+            return "RF_LOST"
+        if all(have.values()):
+            nr, nc, rc = bad[("nav", "rf")], bad[("nav", "cam")], bad[("rf", "cam")]
+            if (nr, nc, rc) == (1, 0, 0):
+                # inertial and the rangefinder disagree and the camera is too noisy to take a side outright
+                if self.evidence > self.evidence_gate:
+                    return "NAV"
+                if self.evidence < -self.evidence_gate:
+                    return "RF"
+                return None
+            return {(0, 0, 0): "NOMINAL", (1, 1, 0): "NAV", (1, 0, 1): "RF",
+                    (0, 1, 1): "CAM", (1, 1, 1): "UNRESOLVED"}.get((nr, nc, rc))   # one failing pair: still unfolding
+        if have[("nav", "rf")]:       # camera sitting out: we can see a disagreement but not blame anyone
+            if bad[("nav", "rf")] and self.mode != "RF":
+                return "UNRESOLVED"
+            return self.mode if self.mode in ("RF", "CAM") else "NOMINAL"
+
     def step(self, x: Inputs) -> Belief:
         events: list[str] = []
         if self.t_anchor is None:
             self.t_anchor = x.t
-            if x.rf is not None:                       # start anchored to the rangefinder
+            if x.rf is not None:                    # start out anchored to the rangefinder
                 self.offset = x.rf - x.h_nav
-        w, cam_ok = self._witnesses(x)
+        w, cam_ok = self.witnesses(x)
+        self.debounce_camera(x, cam_ok, events)
 
-        if cam_ok == self.cam_abstain:                  # camera availability changing: debounce it
-            self._cam_flip_t = self._cam_flip_t or x.t
-            if x.t - self._cam_flip_t >= (0.0 if cam_ok else self.persist):
-                self.cam_abstain = not cam_ok
-                self._cam_flip_t = None
-                if x.v > 1.0:
-                    events.append("cam_abstain" if self.cam_abstain else
-                                  ("cam_back" if self._cam_ever else "cam_lock"))
-                self._cam_ever = self._cam_ever or cam_ok
-        else:
-            self._cam_flip_t = None
-
-        r2 = {}
-        for a, b in PAIRS:
-            if a in w and b in w:
-                (ha, sa), (hb, sb) = w[a], w[b]
-                r2[(a, b)] = (ha - hb) ** 2 / (sa ** 2 + sb ** 2)
+        r2 = {(a, b): (w[a][0] - w[b][0]) ** 2 / (w[a][1] ** 2 + w[b][1] ** 2)
+              for a, b in PAIRS if a in w and b in w}
         self.hist.append((x.t, r2))
-        stats = self._pair_stats(x.t)
-        bad = {p: (v is not None and v > self.gate) for p, v in stats.items()}
-        have = {p: stats[p] is not None for p in PAIRS}
+        stats = self.pair_stats(x.t)
+        bad = {p: int(v is not None and v > self.gate) for p, v in stats.items()}
+        have = {p: v is not None for p, v in stats.items()}
+        self.weigh_camera(r2, bad[("nav", "rf")], x.t)
 
-        # ---- candidate verdict ----
-        cand = None
-        if "rf" not in w:
-            cand = "RF_LOST"
-        elif all(have.values()):
-            nr, nc, rc = bad[("nav", "rf")], bad[("nav", "cam")], bad[("rf", "cam")]
-            if not (nr or nc or rc):
-                cand = "NOMINAL"
-            elif nr and nc and not rc:
-                cand = "NAV"
-            elif nr and rc and not nc:
-                cand = "RF"
-            elif nc and rc and not nr:
-                cand = "CAM"
-            elif nr and nc and rc:
-                cand = "UNRESOLVED"
-            # exactly one pair failing: still developing -> hold the current verdict
-        elif have[("nav", "rf")]:                        # camera abstaining: detect, can't isolate
-            cand = "UNRESOLVED" if bad[("nav", "rf")] and self.mode != "RF" else (
-                self.mode if self.mode in ("RF", "CAM") else "NOMINAL")
-
+        cand = self.candidate(w, bad, have)
+        mode_before = self.mode
         if cand is None or cand == self.mode:
-            self._cand = None
-        elif self._vote(cand, x.t):
+            self.cand = None
+        elif self.confirmed(cand, x.t):
             prev = self.mode
             if cand == "NAV":
-                fused, _ = self._fuse(w, ("rf", "cam"))
-                self.offset += fused - w["nav"][0]       # camera + rangefinder outvote inertial
+                # camera and rangefinder outvote inertial: shift inertial onto them and restart its drift clock
+                fused, _ = self.fuse(w, ("rf", "cam"))
+                self.offset += fused - w["nav"][0]
                 self.t_anchor = x.t
                 self.hist.clear()
-                w["nav"] = (fused, self.nav_s)
+                self.evidence = 0.0
+                self.smoothed = None
+                w["nav"] = (fused, self.nav_sigma)
                 self.mode = "NOMINAL"
                 events.append("terrain_change")
             else:
                 self.mode = cand
-                events.append({"RF": "rf_fault", "CAM": "cam_fault", "RF_LOST": "rf_dropout",
-                               "UNRESOLVED": "unresolved", "NOMINAL": "recovered"}[cand])
-                if cand == "NOMINAL" and prev == "RF_LOST":
-                    events[-1] = "rf_back"
-            self._cand = None
+                events.append("rf_back" if cand == "NOMINAL" and prev == "RF_LOST" else EVENT[cand])
+            self.cand = None
 
+        self.mode_changed = self.mode != mode_before   # a new verdict starts the smoothing over
         excluded = {"RF": ["rf"], "CAM": ["cam"], "RF_LOST": ["rf"]}.get(self.mode, [])
-        use = [k for k in w if k not in excluded]
         if self.mode == "UNRESOLVED":
-            est = min(h for h, _ in w.values())          # fail-safe: brake for the closest ground
-            sig = max(h for h, _ in w.values()) - est
+            # nobody to blame, so brake for the lowest reading: hitting the ground early beats late
+            est = min(h for h, _ in w.values())
+            sigma = max(h for h, _ in w.values()) - est
+            self.smoothed = None
         else:
-            est, sig = self._fuse(w, use)
-        self.last_est = est
+            use = [k for k in w if k not in excluded]
+            if self.mode == "NOMINAL" and "rf" in w:
+                # The camera is the least precise witness (4% against the rangefinder's 1%), so while
+                # inertial and the rangefinder are in good order it only votes. It doesn't blur the answer.
+                use = [k for k in use if k != "cam"]
+            est, sigma = self.fuse(w, use)
+            if self.mode_changed:
+                self.smoothed = None
+            est = self.smooth(est, sigma, x)
         status = STATUS[self.mode] + (" · CAMERA ABSTAINING" if self.cam_abstain else "")
         detail = {
             "witness": {k: {"h": h, "sigma": s} for k, (h, s) in w.items()},
-            "pairs": {f"{a}-{b}": (None if stats[(a, b)] is None else round(stats[(a, b)], 2)) for a, b in PAIRS},
+            "pairs": {f"{a}-{b}": None if stats[(a, b)] is None else round(stats[(a, b)], 2) for a, b in PAIRS},
             "gate": self.gate,
             "cam_abstain": self.cam_abstain,
         }
-        return Belief(est, sig, status, excluded, events, detail)
+        return Belief(est, sigma, status, excluded, events, detail)

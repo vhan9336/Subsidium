@@ -10,6 +10,9 @@ site_note = "Ground: NASA LRO image M1496181900 of the actual landing site on Mo
 broadcast = "footage/broadcasts/athena_im2.mp4"
 broadcast_at = 60
 broadcast_note = "NASA's official broadcast of the IM-2 landing, 6 March 2025: the telemetry-driven simulation in the minutes before touchdown. Credit NASA / Intuitive Machines."
+# There is no public descent video for this mission, so it flies the simulator over the NASA LRO photo
+# of the real site (site, above) and does not borrow another mission's footage.
+footage = false
 steps = [
   { at = 0.0, do = ["fault:clear", "terrain_down", "reset"] },
   { at = 0.5, do = ["descend"] },

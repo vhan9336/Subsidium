@@ -18,7 +18,7 @@ button { background: none; border: 0; padding: 0; color: inherit; font: inherit;
 button:focus-visible { outline: 2px solid var(--cam); outline-offset: 3px; }
 code { font: 14px Consolas, monospace; color: var(--ink); border-bottom: 1px solid var(--rule); }
 
-.app { height: 100vh; min-height: 660px; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; padding: 0 var(--gutter); }
+.app { height: 100vh; min-height: 660px; display: grid; grid-template-rows: minmax(0, 1fr) auto; padding: 0 var(--gutter); }
 
 /* ---- top bar ---- */
 .bar { display: flex; align-items: baseline; gap: 18px; padding: 14px 0 11px; border-bottom: 1px solid var(--rule); }
@@ -32,18 +32,18 @@ code { font: 14px Consolas, monospace; color: var(--ink); border-bottom: 1px sol
 
 /* ---- two columns divided by one rule ---- */
 main { display: grid; grid-template-columns: minmax(0, 1fr) minmax(420px, 31vw); min-height: 0; }
-.left { display: grid; grid-template-rows: minmax(0, 1fr); gap: 16px; min-height: 0; padding: 18px var(--gutter) 14px 0; border-right: 1px solid var(--rule); }
-.right { display: flex; flex-direction: column; gap: 10px; min-height: 0; padding: 22px 0 14px var(--gutter); }
+.left { display: grid; grid-template-rows: minmax(0, 1fr) auto; gap: 12px; min-height: 0; padding: 18px var(--gutter) 14px 0; border-right: 1px solid var(--rule); }
+.right { display: flex; flex-direction: column; gap: 8px; min-height: 0; overflow: hidden; padding: 18px 0 12px var(--gutter); }
 .mission { color: var(--dim); font-size: 14px; } .mission b { color: var(--ink); font-weight: 600; margin-right: 8px; }
-.right h2 { font: 600 clamp(26px, 2.3vw, 40px)/1.12 var(--display); padding-left: 16px; border-left: 5px solid var(--faint); text-wrap: balance; }
+.right h2 { font: 600 clamp(22px, 1.9vw, 34px)/1.15 var(--display); padding-left: 16px; border-left: 5px solid var(--faint); text-wrap: balance; }
 .right h2.good { border-color: var(--so); } .right h2.warn { border-color: var(--rf); } .right h2.bad { border-color: var(--legacy); }
 .right h2.idle { color: var(--dim); font-weight: 400; }
 .right .then { padding-left: 21px; }
 .three { margin-top: auto; }
-.three > div { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; padding: 12px 0 10px; border-top: 1px solid var(--rule); }
+.three > div { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; padding: 8px 0 7px; border-top: 1px solid var(--rule); }
 .three dt { font: 700 20px/1.15 var(--display); letter-spacing: 0.02em; }
 .three dt span { display: block; margin-top: 3px; font: 400 14px/1.3 var(--body); letter-spacing: 0; color: var(--dim); }
-.three dd { font: 600 clamp(40px, 3.6vw, 64px)/1 var(--display); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.three dd { font: 600 clamp(34px, 3vw, 52px)/1 var(--display); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .three small { font: 400 17px var(--body); color: var(--dim); }
 .three em { display: inline-block; min-width: 3.6em; text-align: right; font: 600 0.5em var(--display); font-style: normal; color: var(--so); }
 .three .bad em { color: var(--legacy); }
@@ -73,15 +73,7 @@ h4 span { margin-left: 10px; font-weight: 400; font-size: 13px; color: var(--dim
 .scene.is-thumb .tag { display: none; }
 .scene-fallback { height: 100%; display: grid; place-items: center; color: var(--dim); }
 
-/* the software layer over the footage: one line, three numbers */
-.lower { position: absolute; left: 0; right: calc(var(--thumb) + 12px); bottom: 0; z-index: 3; display: flex; gap: 44px; padding: 56px 22px 14px; pointer-events: none;
-  background: linear-gradient(to bottom, transparent, rgba(0, 0, 0, 0.9) 62%); }
-.stage.solo .lower { right: 0; }
-.lower dt { font: 600 13px/1.2 var(--body); }
-.lower dd { font: 600 44px/1.05 var(--display); font-variant-numeric: tabular-nums; color: var(--ink); }
-.lower small { font: 400 15px var(--body); color: var(--dim); }
-.lower em { margin-left: 12px; font: 600 24px var(--display); font-style: normal; color: var(--so); }
-.lower .bad em { color: var(--legacy); }
+/* the three numbers on the right */
 .k-truth dt { color: var(--truth); } .k-legacy dt { color: var(--legacy); } .k-so dt { color: var(--so); }
 
 /* on the camera image: source, camera state, the vote, and an altitude tape */
@@ -110,13 +102,6 @@ h4 span { margin-left: 10px; font-weight: 400; font-size: 13px; color: var(--dim
 .tape-caret.so { left: 26px; border-right: 13px solid var(--so); border-left: 0; }
 .tape-caret b { position: absolute; top: -9px; font: 700 13px/18px var(--display); letter-spacing: 0.04em; white-space: nowrap; font-style: normal; text-shadow: 0 1px 3px #000, 0 0 2px #000; }
 .tape-caret.legacy b { right: 18px; color: var(--legacy); } .tape-caret.so b { left: 18px; color: var(--so); }
-/* a mission broadcast has its own graphics on the right, so the tape sits on the left of the picture */
-.view.broadcast.is-main img { object-position: right center; }
-.hud.broadcast .tape { right: auto; left: 132px; top: 96px; }
-.hud.broadcast .hud-source { display: none; }
-.hud.broadcast .hud-verdict { right: auto; left: 22px; text-align: left; padding: 4px 12px; background: rgba(0, 0, 0, 0.78); border-right: 0; border-left: 4px solid var(--faint); }
-.hud.broadcast .hud-verdict.good { border-color: var(--so); }
-.hud.broadcast .tape-tick, .hud.broadcast .tape-caret b { background: rgba(0, 0, 0, 0.55); padding: 0 4px; }
 .tape small { top: auto; bottom: -22px; right: 9px; font: 400 12px var(--body); color: var(--ink); text-shadow: 0 1px 3px #000; }
 
 /* labels inside the 3D view */
@@ -135,22 +120,11 @@ h4 span { margin-left: 10px; font-weight: 400; font-size: 13px; color: var(--dim
 .pip-cam { color: var(--cam); transform: translate(72px, -50%); }
 .tag-pip.off { color: var(--off); text-decoration: line-through; }
 
-/* ---- what is happening, in words ---- */
-.story { display: grid; gap: 6px; align-content: start; }
-.story h2 { font: 600 clamp(24px, 2.1vw, 36px)/1.14 var(--display); letter-spacing: -0.005em; padding-left: 16px; border-left: 5px solid var(--faint); text-wrap: balance; }
-.story h2.good { border-color: var(--so); } .story h2.warn { border-color: var(--rf); } .story h2.bad { border-color: var(--legacy); }
-.story h2.idle { color: var(--dim); font-weight: 400; }
-.then { font-size: 19px; line-height: 1.35; padding-left: 21px; }
+/* ---- the one-line cue shown to whoever is working the rig ---- */
 .cue { justify-self: start; margin: 4px 0 0 21px; padding: 6px 14px; background: var(--rf); color: #15110a; font: 700 19px/1.2 var(--display); }
-.about { margin-top: 6px; color: var(--dim); font-size: 14px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-.about b { color: var(--ink); font-weight: 600; } .about span { margin: 0 10px 0 6px; }
 .credit { color: var(--faint); font-size: 12px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-.clips { display: flex; gap: 22px; margin-bottom: 4px; }
-.clips button { font: 600 15px var(--body); color: var(--dim); padding-bottom: 3px; border-bottom: 2px solid transparent; }
-.clips button:hover { color: var(--ink); } .clips button.on { color: var(--ink); border-color: var(--ink); }
 
 /* ---- lanes: every source on one altitude scale ---- */
-.how-high { display: flex; flex-direction: column; min-height: 0; }
 .lanes { flex: 1; min-height: 0; width: 100%; font-family: var(--display); }
 .lanes .grid { stroke: var(--rule); } .lanes .divide { stroke: var(--rule); }
 .lanes .tick, .lanes .unit { fill: var(--dim); font-size: 13px; text-anchor: end; }
@@ -166,19 +140,7 @@ h4 span { margin-left: 10px; font-weight: 400; font-size: 13px; color: var(--dim
 .lanes .truth-label { text-anchor: middle; fill: var(--truth); font-size: 13px; font-weight: 700; letter-spacing: 0.08em; }
 .lanes .gap { stroke-width: 2; stroke-dasharray: 2 3; }
 
-/* ---- the two brains, one line each ---- */
-.brain { display: grid; grid-template-columns: minmax(0, 1fr) 104px 168px; gap: 18px; align-items: center; padding: 9px 0; border-top: 1px solid var(--rule); }
-.brain h3 { font: 700 21px/1.1 var(--display); letter-spacing: 0.02em; }
-.brain.legacy h3 { color: var(--legacy); } .brain.so h3 { color: var(--so); }
-.brain p { color: var(--dim); font-size: 14px; line-height: 1.3; }
-.num b { display: block; font: 600 clamp(30px, 2.4vw, 42px)/1 var(--display); font-variant-numeric: tabular-nums; }
-.num span { font-size: 12px; color: var(--dim); }
-.num.good b { color: var(--so); } .num.bad b { color: var(--legacy); }
-.flight { color: var(--dim); font-size: 13px; padding: 8px 0; border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule); }
-
 /* ---- vote triangle + plot ---- */
-.evidence { display: grid; grid-template-columns: minmax(0, 0.82fr) minmax(0, 1.18fr); gap: var(--gutter); min-height: 0; padding-top: 4px; }
-.evidence > div { display: flex; flex-direction: column; min-height: 0; }
 .triangle { flex: 1; min-height: 0; width: 100%; }
 .triangle text { text-anchor: middle; font-family: var(--display); }
 .edge.ok { color: var(--so); } .edge.fail { color: var(--legacy); } .edge.none { color: var(--off); }
@@ -237,20 +199,20 @@ h4 span { margin-left: 10px; font-weight: 400; font-size: 13px; color: var(--dim
 .tracking p { color: var(--dim); max-width: 52ch; }
 
 /* ---- bottom: missions, then the manual controls, quieter ---- */
-.deck { border-top: 1px solid var(--rule); padding-bottom: 12px; display: grid; grid-template-columns: 1fr auto; align-items: center; }
+.deck { border-top: 1px solid var(--rule); padding-bottom: 12px; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
 .deck .manual { grid-column: 1 / -1; }
 .deck .math { font: 600 16px var(--display); color: var(--dim); padding: 6px 0; } .deck .math:hover, .deck .math.on { color: var(--ink); }
 .deck .math i { font-style: normal; margin-left: 6px; padding: 1px 6px; border: 1px solid var(--rule); color: var(--dim); }
-.missions { display: flex; flex-wrap: wrap; gap: 0 30px; }
-.missions button { display: grid; grid-template-columns: auto auto; column-gap: 10px; align-items: baseline; padding: 11px 0 8px; margin-top: -1px; border-top: 3px solid transparent; color: var(--dim); }
+.missions { display: grid; grid-template-columns: repeat(auto-fit, minmax(128px, 1fr)); gap: 0 18px; min-width: 0; }
+.missions button { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 10px; align-items: baseline; padding: 11px 0 8px; margin-top: -1px; border-top: 3px solid transparent; color: var(--dim); min-width: 0; }
 .missions button:hover { color: var(--ink); }
 .missions button.on { color: var(--ink); border-color: var(--ink); }
 .missions i { font: 400 15px var(--display); font-style: normal; color: var(--faint); }
-.missions span { font: 600 20px/1.1 var(--display); }
-.missions small { grid-column: 2; font-size: 12px; color: var(--faint); }
-.missions em { font-style: normal; margin-left: 8px; color: var(--dim); }
+.missions span { font: 600 16px/1.1 var(--display); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.missions small { grid-column: 2; font-size: 12px; color: var(--faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.missions em { font-style: normal; margin-left: 5px; color: var(--dim); }
 .missions em::before { content: "· "; }
-.manual { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 20px; padding-top: 4px; font-size: 13px; color: var(--dim); }
+.deck .manual { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 20px; padding-top: 4px; font-size: 13px; color: var(--dim); }
 .manual .label { color: var(--faint); }
 .manual .label:not(:first-child) { margin-left: 14px; }
 .manual .spacer { flex: 1; }
@@ -271,9 +233,6 @@ h4 span { margin-left: 10px; font-weight: 400; font-size: 13px; color: var(--dim
 @media (max-width: 700px) {
   :root { --gutter: 14px; --thumb: 110px; }
   .bar p { display: none; }
-  .lower { gap: 18px; } .lower dd { font-size: 28px; }
-  .brain { grid-template-columns: minmax(0, 1fr) 70px 100px; }
-  .evidence { grid-template-columns: 1fr; } .evidence > div { height: 280px; }
   .right { grid-template-rows: 300px auto auto auto; }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -281,17 +240,69 @@ h4 span { margin-left: 10px; font-weight: 400; font-size: 13px; color: var(--dim
   .lanes .marker, .view.is-thumb, .tape > * { transition: none; }
 }
 
-/* ---- walkthrough slides (E): html files from slides/, scaled to fit ---- */
-.deck .tools { display: flex; gap: 26px; justify-self: end; }
-.explain { position: fixed; inset: 0; z-index: 50; background: var(--bg); display: grid; grid-template-rows: auto minmax(0, 1fr) auto; padding: 0 var(--gutter) 18px; }
-.explain-top { display: flex; justify-content: space-between; align-items: baseline; padding: 14px 0 11px; border-bottom: 1px solid var(--rule); color: var(--dim); }
-.explain-top i { font-style: normal; margin-left: 6px; padding: 1px 6px; border: 1px solid var(--rule); color: var(--dim); }
-.stage-box { position: relative; min-height: 0; margin: 14px 0; }
-.stage-box.empty { display: grid; place-items: center; color: var(--dim); }
-.stage-box iframe { position: absolute; left: 50%; top: 50%; border: 0; transform-origin: center; background: var(--bg); }
-.explain-nav { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 24px; border-top: 1px solid var(--rule); padding-top: 14px; }
-.explain-nav > button { font: 600 16px var(--display); color: var(--ink); padding: 6px 4px; }
-.explain-nav > button:disabled { color: var(--faint); cursor: default; }
-.progress { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
-.progress button { width: 28px; height: 4px; background: var(--rule); }
-.progress button.on { background: var(--so); }
+/* ---- playback bar under the picture ---- */
+.playback { display: flex; align-items: center; gap: 10px; font-size: 14px; color: var(--dim); }
+.playback .icon { width: 30px; height: 30px; padding: 6px; border-radius: 50%; color: var(--dim); transition: color 0.12s, background 0.12s; }
+.playback .icon:hover:not(:disabled) { color: var(--ink); background: rgba(237, 237, 234, 0.1); }
+.playback .icon:disabled { color: var(--faint); opacity: 0.5; cursor: default; }
+.playback .icon.big { width: 38px; height: 38px; padding: 9px; color: #06140b; background: var(--so); }
+.playback .icon.big:hover:not(:disabled) { color: #06140b; background: #7aeea2; }
+.playback .icon.big svg { fill: currentColor; }
+.playback input { flex: 1; margin-left: 6px; accent-color: var(--so); }
+.playback .clock { min-width: 8.5em; text-align: right; font-variant-numeric: tabular-nums; }
+
+/* ---- live data panel on the main screen ---- */
+.livedata { flex: 0 1 auto; min-height: 0; overflow-y: auto; margin-top: 4px; padding-top: 6px; border-top: 1px solid var(--rule); font-size: 12px; color: var(--dim); }
+.livedata h4 { margin-bottom: 2px; font-size: 13px; }
+.livedata table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.livedata td { padding: 1px 8px 1px 0; }
+.livedata td:first-child { font-weight: 600; }
+.livedata tr.nav td:first-child { color: var(--nav); } .livedata tr.rf td:first-child { color: var(--rf); } .livedata tr.cam td:first-child { color: var(--cam); }
+.livedata tr td:nth-child(2), .livedata tr td:nth-child(3) { color: var(--ink); }
+.livedata tr.off td { color: var(--off); } .livedata tr.off td:first-child { text-decoration: line-through; }
+.livedata .line { margin: 3px 0 0; color: var(--dim); font-variant-numeric: tabular-nums; }
+.livedata b.legacy { color: var(--legacy); font-weight: 600; } .livedata b.so { color: var(--so); font-weight: 600; }
+.livedata .pairs { display: flex; flex-wrap: wrap; gap: 0 14px; margin-top: 3px; }
+.livedata .pairs span b { font-weight: 600; margin-left: 3px; }
+.livedata .pairs .pass b { color: var(--so); } .livedata .pairs .fail b { color: var(--legacy); } .livedata .pairs .none b { color: var(--off); }
+.livedata .events { list-style: none; margin: 3px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 0 14px; color: var(--ink); }
+.livedata .events time { color: var(--faint); font-variant-numeric: tabular-nums; margin-right: 3px; }
+.three dt span { font-size: 13px; }
+
+.deck .tools { grid-column: 2; grid-row: 1; display: flex; gap: 26px; justify-self: end; align-self: center; }
+
+/* legend for the hazard grid drawn over the footage */
+.hud-legend { position: absolute; left: 22px; bottom: 14px; display: flex; align-items: center; gap: 8px; font: 600 12px var(--body); color: var(--ink); padding: 4px 10px; background: rgba(0, 0, 0, 0.7); }
+.hud-legend i { width: 54px; height: 8px; background: linear-gradient(90deg, rgb(0, 190, 40), rgb(255, 0, 40)); }
+.hud-legend b { font-weight: 400; color: var(--dim); } .hud-legend span { margin-left: 8px; }
+
+/* hazard grid table on the math screen */
+.proof section.wide { grid-column: span 2; }
+.proof table.grid { width: auto; table-layout: fixed; border-collapse: separate; border-spacing: 2px; }
+.proof table.grid td { width: 52px; height: 30px; padding: 0; text-align: center; border: 0; color: var(--ink); font: 13px var(--display); }
+.proof table.grid td.safest { outline: 2px solid var(--ink); outline-offset: -2px; font-weight: 700; }
+
+/* ---- presentation (E): a Canva design over the whole screen, hidden (not unloaded) when closed ---- */
+.explain { position: fixed; inset: 0; z-index: 50; background: #000; display: grid; place-items: center; }
+.explain.closed { visibility: hidden; pointer-events: none; }
+.canva { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+.explain-controls { position: absolute; top: 12px; right: 14px; z-index: 2; display: flex; gap: 8px; }
+.explain-controls button { padding: 6px 12px; font: 600 13px var(--body); color: var(--ink); background: rgba(0, 0, 0, 0.62); border: 1px solid rgba(255, 255, 255, 0.18); opacity: 0.55; transition: opacity 0.15s; }
+.explain-controls button:hover, .explain-controls button:focus-visible { opacity: 1; }
+.explain-controls i { font-style: normal; margin-left: 6px; color: var(--dim); font-size: 11px; }
+.canva-setup { width: min(640px, calc(100% - 48px)); display: grid; gap: 14px; }
+.canva-setup h2 { font: 600 30px/1.15 var(--display); }
+.canva-setup p { color: var(--dim); }
+.canva-setup input { width: 100%; padding: 10px 12px; font: 15px var(--body); color: var(--ink); background: transparent; border: 1px solid var(--rule); }
+.canva-setup input:focus { outline: 2px solid var(--cam); outline-offset: 2px; }
+.canva-setup button { justify-self: start; padding: 8px 18px; font: 600 16px var(--display); color: #06140b; background: var(--so); }
+.canva-setup .bad { color: var(--legacy); }
+
+.bar .notice { color: var(--rf); font-weight: 600; }
+
+.three em span { display: block; font: 400 15px var(--body); color: var(--dim); margin-top: 2px; }
+.three .bad em span { color: var(--legacy); opacity: 0.8; }
+.proof .dim { color: var(--dim); }
+.livedata h4 .fault { color: var(--rf); font-weight: 600; margin-left: 0; }
+.toast { position: fixed; left: 50%; bottom: 96px; transform: translateX(-50%); z-index: 40; padding: 8px 16px; background: rgba(0, 0, 0, 0.82); border: 1px solid var(--rf); color: var(--rf); font-weight: 600; }
+.deck { column-gap: 28px; }

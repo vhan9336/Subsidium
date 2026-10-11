@@ -39,3 +39,13 @@ if __name__ == "__main__":
     print("chosen site:", last.site)
     assert np.median(np.abs(e)) < 0.06, "vision altitude too noisy"
     print("PASS")
+
+
+def test_switching_to_a_different_image_size_does_not_crash():
+    # found when picking footage during a simulator replay: the old frames are a different size
+    est = TTCEstimator()
+    small, big = SimScene(out=(320, 240)).render(300.0), SimScene(out=(640, 480)).render(300.0)
+    for k in range(40):
+        est.update(k / 30, small)
+    for k in range(40, 80):
+        est.update(k / 30, big)

@@ -1,25 +1,25 @@
-// The camera image, pulled one frame at a time. A plain <img> on the MJPEG stream sometimes went
-// black in Chrome and stayed black; fetching frames cannot stall that way, and it recovers on
-// its own when the engine restarts.
+// The camera image, fetched one frame at a time. A plain <img> pointed at the MJPEG stream
+// sometimes went black in Chrome and stayed that way. Fetching frames can't stall like that, and
+// it recovers on its own if the engine restarts.
 import { useEffect, useRef } from "react";
 
-export default function CameraFeed({ alt }: { alt: string }) {
-  const ref = useRef<HTMLImageElement>(null);
+export default function CameraFeed({ alt, src = "/frame.jpg" }: { alt: string; src?: string }) {
+  const img = useRef<HTMLImageElement>(null);
   useEffect(() => {
     let live = true;
     let timer = 0;
-    let last = "";
+    let url = "";
     const next = async () => {
       let wait = 60;
       try {
-        const r = await fetch("/frame.jpg", { cache: "no-store" });
+        const r = await fetch(src, { cache: "no-store" });
         if (!r.ok) throw new Error(String(r.status));
-        const url = URL.createObjectURL(await r.blob());
-        if (live && ref.current) ref.current.src = url;
-        if (last) URL.revokeObjectURL(last);
-        last = url;
+        const fresh = URL.createObjectURL(await r.blob());
+        if (live && img.current) img.current.src = fresh;
+        if (url) URL.revokeObjectURL(url);
+        url = fresh;
       } catch {
-        wait = 600; // engine not up yet
+        wait = 600; // the engine isn't up yet
       }
       if (live) timer = window.setTimeout(next, wait);
     };
@@ -27,8 +27,8 @@ export default function CameraFeed({ alt }: { alt: string }) {
     return () => {
       live = false;
       clearTimeout(timer);
-      if (last) URL.revokeObjectURL(last);
+      if (url) URL.revokeObjectURL(url);
     };
-  }, []);
-  return <img ref={ref} alt={alt} />;
+  }, [src]);
+  return <img ref={img} alt={alt} />;
 }

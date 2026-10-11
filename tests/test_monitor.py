@@ -1,13 +1,13 @@
-"""Unit tests for the 2-of-3 integrity monitor on hand-built sensor streams (no camera)."""
+"""The voting monitor on hand-built sensor streams. No camera involved."""
 import numpy as np
 
-from so.config import load
 from so.fusion.legacy import LegacyGate
 from so.fusion.triplex import TriplexMonitor
 from so.fusion.types import Inputs
 
-CFG = load()
-V = 30.0  # mm/s
+from .common import CFG
+
+V = 30.0  # descent speed, mm/s
 
 
 def stream(n=300, dt=1 / 30, h0=450.0, rf_fn=None, cam_fn=None, nav_fn=None, seed=0):
@@ -35,10 +35,11 @@ def test_nominal():
 
 
 def test_terrain_change_reanchors_inertial():
-    # ground drops 60 mm at t=3 s (HAKUTO-R direction): rangefinder and camera jump up, inertial doesn't
-    up = lambda t, h: h + (60 if t > 3 else 0)
+    # The ground drops 200 mm at t = 3 s (the HAKUTO-R direction): the rangefinder and camera jump up
+    # and inertial doesn't. The camera is noisy (10%), so the change has to be big enough for it to see.
+    up = lambda t, h: h + (200 if t > 3 else 0)
     b, h, ev = run(rf_fn=up, cam_fn=up)
-    assert "terrain_change" in ev and abs(b.est - (h + 60)) < 6
+    assert "terrain_change" in ev and abs(b.est - (h + 200)) < 6
 
 
 def test_rangefinder_fault_isolated():
@@ -48,7 +49,7 @@ def test_rangefinder_fault_isolated():
 
 
 def test_camera_fault_isolated():
-    biased = lambda t, h: h * (1.35 if t > 3 else 1.0)
+    biased = lambda t, h: h * (2.0 if t > 3 else 1.0)   # reads double: far outside a 10% camera's noise
     b, h, ev = run(cam_fn=biased)
     assert "cam_fault" in ev and "cam" in b.excluded and abs(b.est - h) < 6
 
@@ -64,3 +65,14 @@ def test_legacy_rejects_true_jump():
     for t, h, x in stream(rf_fn=lambda t, h: h + (60 if t > 3 else 0)):
         b = m.step(x)
     assert b.status == "RF DECLARED FAILED" and b.est < h + 60 - 50   # believes it is ~60 mm lower
+
+
+def test_biased_camera_does_not_pull_the_estimate_before_it_is_excluded():
+    # The camera reads 35% high from t = 3 s. That's only about 3 sigma for a 10% camera, so the vote
+    # can't prove it wrong. The answer still has to stay put, because the camera doesn't feed it.
+    biased = lambda t, h: h * (1.35 if t > 3 else 1.0)
+    m, worst = TriplexMonitor(CFG), 0.0
+    for t, h, x in stream(cam_fn=biased):
+        b = m.step(x)
+        worst = max(worst, abs(b.est - h))
+    assert worst < 8

@@ -1,21 +1,16 @@
-"""End-to-end: every mission replay in fast simulation, plus record -> replay determinism."""
-import math
-
-from so.check import EXPECT, run_one
-from so.config import load
+"""End to end: every mission replay in fast simulation, and recording then replaying a session."""
+from so.check import EXPECT, passed, run_one
 from so.pipeline import Pipeline
 from so.sources.replay import ReplaySource
 from so.sources.sim import SimSource
 
-CFG = load()
-MMPS = math.pi * CFG["rig"]["spool_mm"] / CFG["rig"]["steps_per_rev"]
+from .common import CFG, MMPS
 
 
 def test_all_mission_replays():
     for sid, want in EXPECT.items():
         st, events = run_one(CFG, MMPS, sid)
-        assert want <= {e for _, e in events}, (sid, events)
-        assert abs(st["score"]["so"]["last"]) < 12, sid
+        assert passed(st, events, want), (sid, events)
 
 
 def test_record_then_replay_gives_same_verdicts(tmp_path):
@@ -23,15 +18,13 @@ def test_record_then_replay_gives_same_verdicts(tmp_path):
     pipe.start_recording(str(tmp_path / "s"))
     pipe.command("scenario:resilience")
     live = []
-    while True:
-        st = pipe.tick()
+    while (st := pipe.tick())["t"] <= 9:
         live += st["events"]
-        if st["t"] > 9:
-            break
     pipe.command("record_stop")
     pipe.tick()
-    rep = Pipeline(CFG, ReplaySource(tmp_path / "s", realtime=False), log_path=None)
+
+    replay = Pipeline(CFG, ReplaySource(tmp_path / "s", realtime=False), log_path=None)
     replayed = []
-    while (st := rep.tick()) is not None:
+    while (st := replay.tick()) is not None:
         replayed += st["events"]
     assert "rf_fault" in live and "rf_fault" in replayed

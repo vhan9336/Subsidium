@@ -3,6 +3,9 @@ name = "Nominal descent"
 mission = "Baseline"
 summary = "All three witnesses agree. The hazard map picks a landing site away from the boulders."
 setup = "Flat ground under the lander."
+site = "scenarios/sites/nominal.jpg"
+site_note = "Ground: a 35 degree square of the southern highlands from NASA's LRO global colour mosaic. Credit NASA's Scientific Visualization Studio."
+footage = false     # no real footage of its own: it flies the simulator over this ground
 steps = [
   { at = 0.0, do = ["fault:clear", "terrain_down", "reset"] },
   { at = 0.5, do = ["descend"] },

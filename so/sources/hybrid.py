@@ -1,12 +1,14 @@
-"""Real footage where it can carry a replay, the simulator where it cannot.
+"""Real footage where it can carry a replay, the simulator where it can't, and the live rig on demand.
 
-Recorded footage cannot have the ground moved under it, so a replay that needs the plateau
-(`footage = false` in its scenario file) runs on the simulator; every other replay runs on the
-real landing video. One clock runs across both; it only goes back to zero when the clip loops,
-which the pipeline treats as a clean restart.
+You can't move the ground under recorded footage, so a replay that needs the plateau
+(`footage = false` in its scenario file) runs on the simulator. Every other replay runs on the
+real landing video. One clock covers both and only drops back to zero when the clip loops, which
+the pipeline treats as a clean restart.
+
+If a rig is attached, `live:on` switches over to it. While it's live, replays run their scripts on
+the rig (the physical steps show up as cues for whoever is working it), and picking a footage
+clip, or `live:off`, switches back.
 """
-from __future__ import annotations
-
 import dataclasses
 import time
 
@@ -16,56 +18,82 @@ from .video import VideoSource
 
 
 class HybridSource(Source):
-    def __init__(self, video: VideoSource, sim: SimSource):
-        self.video, self.sim, self.cur = video, sim, video
-        self.mm_per_step = video.mm_per_step
-        self.t, self._last = 0.0, None
-        self.home = video.clip["id"]             # the clip replays fly on unless they name their own
+    def __init__(self, video: VideoSource, sim: SimSource, rig: Source | None = None):
+        self.video, self.sim, self.rig, self.cur = video, sim, rig, video
+        self.t, self.last = 0.0, None
+        self.home = video.clip["id"]             # the clip a replay flies on unless it names its own
 
-    # what the pipeline reads off a source follows whichever one is flying
+    # The pipeline reads these straight off the source, so they follow whichever one is flying.
     kind = property(lambda self: self.cur.kind)
+    mm_per_step = property(lambda self: self.cur.mm_per_step)    # the rig counts servo tenths, the others stepper steps
+    has_rig = property(lambda self: self.rig is not None)
     h0 = property(lambda self: self.cur.h0)
-    tau_gain = property(lambda self: getattr(self.cur, "tau_gain", 1.0))
-    show_hazard = property(lambda self: getattr(self.cur, "show_hazard", True))
-    reconstructed_cam = property(lambda self: getattr(self.cur, "reconstructed_cam", False))
+    tau_gain = property(lambda self: self.cur.tau_gain)
+    show_hazard = property(lambda self: self.cur.show_hazard)
+    reconstructed_cam = property(lambda self: self.cur.reconstructed_cam)
 
     def cam_reading(self):
         return self.cur.cam_reading()
 
-    def info(self) -> dict | None:
+    def info(self):
         return self.video.info() if self.cur is self.video else None
 
-    def catalog(self) -> list[dict]:
+    def catalog(self):
         return self.video.catalog()
 
+    def go_live(self):
+        if self.rig and self.cur is not self.rig:
+            self.cur, self.last = self.rig, None
+            self.rig.command("reset")            # back to the top, ready to calibrate
+
+    def leave_live(self):
+        if self.cur is self.rig:
+            self.rig.command("stop")
+            self.cur, self.last = self.sim, None
+            self.sim.resync()
+
     def use(self, footage: bool, clip: str | None = None):
+        """Pick what the next replay flies on. While the rig is live, replays stay on it."""
+        if self.cur is self.rig:
+            return
+        if clip and clip not in self.video.clips:
+            footage = False              # its own broadcast isn't downloaded, so the simulator flies it
         new = self.video if footage else self.sim
         if footage:
             self.video.command(f"clip:{clip or self.home}")
         if new is self.cur:
             return
-        self.cur, self._last = new, None
+        self.cur, self.last = new, None
         if new is self.sim and self.sim.realtime:
-            self.sim.t = time.monotonic()        # no time passed for the simulator while it was idle
+            self.sim.t = time.monotonic()        # the simulator's clock stood still while it was idle
+
+    def resync(self):
+        self.cur.resync()
 
     def command(self, name: str):
-        if name.startswith("texture:"):
+        if name == "live:on" or (name == "live:toggle" and self.cur is not self.rig):
+            self.go_live()
+        elif name in ("live:off", "live:toggle"):
+            self.leave_live()
+        elif name.startswith("texture:"):
             self.sim.command(name)
         elif name.startswith("clip:"):
+            self.leave_live()                    # picking footage by hand ends the live demonstration
             self.home = name[5:] if name[5:] in self.video.clips else self.home
             self.use(True)
         else:
             self.cur.command(name)
 
-    def read(self) -> Sample:
+    def read(self) -> Sample | None:
         s = self.cur.read()
-        if self._last is not None and s.t < self._last:
-            self.t = 0.0                             # the clip looped
-        elif self._last is not None:
-            self.t += s.t - self._last
-        self._last = s.t
+        if s is None:                            # the rig's camera didn't deliver a frame
+            return None
+        if self.last is not None:
+            self.t = 0.0 if s.t < self.last else self.t + s.t - self.last     # a drop in time means the clip looped
+        self.last = s.t
         return dataclasses.replace(s, t=self.t)
 
     def close(self):
-        self.video.close()
-        self.sim.close()
+        for source in (self.video, self.sim, self.rig):
+            if source:
+                source.close()

@@ -1,20 +1,16 @@
-"""The textbook altimeter gate — the logic pattern ispace reported for HAKUTO-R Mission 1.
+"""The old-fashioned gate we compare against. It's the logic ispace described for HAKUTO-R Mission 1.
 
-Trust the inertial estimate; accept the rangefinder only when it is close to what the inertial
-estimate expects; if it keeps disagreeing, declare it failed. ispace: the measured altitude
-"rose sharply" passing a ~3 km crater rim, the software judged it abnormal and filtered it out,
-and the lander believed it was at the surface while ~5 km up.
+Follow the inertial estimate. Take a rangefinder reading only if it lands near where inertial
+expects it. If readings keep getting rejected, declare the rangefinder dead for good.
 
-The same gate also follows a slowly degrading sensor, because each small step looks plausible.
+When the ground really does change, inertial is the one that's wrong and the rangefinder is
+right, but the gate has no way to know that. It also follows a rangefinder that degrades
+slowly, because every small step still looks plausible.
 """
-from __future__ import annotations
-
 from .types import Belief, Inputs
 
 
 class LegacyGate:
-    name = "Legacy gate"
-
     def __init__(self, cfg: dict):
         self.gate = cfg["legacy"]["gate_mm"]
         self.alpha = cfg["legacy"]["alpha"]
@@ -33,11 +29,13 @@ class LegacyGate:
         if self.est is None:
             self.est = x.rf if x.rf is not None else x.h_nav
             self.prev_nav = x.h_nav
-        self.est += x.h_nav - self.prev_nav          # propagate with the inertial estimate
+        # carry the estimate forward by however much inertial says we moved
+        self.est += x.h_nav - self.prev_nav
         self.prev_nav = x.h_nav
+
         if not self.rf_failed and x.rf is not None:
             if abs(x.rf - self.est) < self.gate:
-                self.est += self.alpha * (x.rf - self.est)
+                self.est += self.alpha * (x.rf - self.est)     # nudge toward the rangefinder
                 self.rejects = 0
                 self.status = "NOMINAL"
             else:

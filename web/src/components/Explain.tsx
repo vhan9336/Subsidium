@@ -1,76 +1,102 @@
-// The slide walkthrough, opened with E. The slides are plain HTML files in the top-level slides/
-// folder, listed by the engine in alphabetical order. Each one is drawn in an iframe on a fixed
-// 1280 x 720 canvas that is scaled to fit the window. Left/right arrows move, Escape closes.
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+// The presentation, opened with E: a Canva design filling the whole screen.
+// The link comes from canva_url in config.toml, or from a box on the page the first time.
+//
+// It loads in the background as soon as the page does, so the first time you open it there's
+// nothing to wait for. It stays mounted and is only hidden when closed, so the frame is never
+// reloaded and reopening drops you on the slide you left.
+import { useEffect, useRef, useState } from "react";
 
-const W = 1280;
-const H = 720;
+const SAVED = "subsidium-canva-url";
 
-export default function Explain({ onClose }: { onClose: () => void }) {
-  const [files, setFiles] = useState<string[] | null>(null);
-  const [i, setI] = useState(0);
-  const [scale, setScale] = useState(1);
-  const box = useRef<HTMLDivElement>(null);
-  const count = files?.length ?? 0;
-  const go = (d: number) => setI((n) => Math.min(Math.max(n + d, 0), Math.max(count - 1, 0)));
+/**
+ * Turns whatever was pasted into an address Canva will show inside an iframe. It accepts the share
+ * link, the embed link, or the whole <iframe> snippet from Canva's Embed option.
+ */
+export function embedUrl(pasted: string): string | null {
+  const fromSnippet = pasted.match(/src=["']([^"']+)["']/);
+  const url = (fromSnippet ? fromSnippet[1] : pasted).trim();
+  if (!/^https:\/\/([\w-]+\.)?canva\.com\//.test(url)) return null;
+  if (/[?&]embed\b/.test(url)) return url;
+  return url + (url.includes("?") ? "&embed" : "?embed");
+}
+
+function saved(): string {
+  try {
+    return localStorage.getItem(SAVED) ?? "";
+  } catch {
+    return ""; // storage can be blocked, so the page just asks again next time
+  }
+}
+
+export default function Explain({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const [url, setUrl] = useState<string | null>(embedUrl(saved()));
+  const [pasted, setPasted] = useState("");
+  const [bad, setBad] = useState(false);
+  const input = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    fetch("/slides.json").then((r) => r.json()).then(setFiles).catch(() => setFiles([]));
+    if (!open) return;
+    input.current?.focus(); // the paste box, if there is one
+    // when the frame has focus the browser keeps its keys, so make sure they come back to the page on close
+    return () => (document.activeElement as HTMLElement | null)?.blur();
+  }, [open]);
+
+  // a link set in config.toml wins over one pasted earlier
+  useEffect(() => {
+    fetch("/presentation.json")
+      .then((r) => r.json())
+      .then((d: { url: string }) => d.url && setUrl(embedUrl(d.url)))
+      .catch(() => {});
   }, []);
 
-  // fit the 16:9 canvas inside whatever room the window leaves
-  useLayoutEffect(() => {
-    const el = box.current;
-    if (!el) return;
-    const fit = () => setScale(Math.min(el.clientWidth / W, el.clientHeight / H));
-    fit();
-    const ro = new ResizeObserver(fit);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, [count]);
-
   useEffect(() => {
+    if (!open) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.ctrlKey || e.metaKey || e.altKey) return;
-      if (e.key === "ArrowRight" || e.key === " " || e.key === "PageDown") go(1);
-      else if (e.key === "ArrowLeft" || e.key === "PageUp") go(-1);
-      else if (e.key === "Home") setI(0);
-      else if (e.key === "End") setI(Math.max(count - 1, 0));
-      else if (e.key === "Escape" || e.key.toLowerCase() === "e") onClose();
-      else return;
-      e.preventDefault();
-      e.stopImmediatePropagation(); // the dashboard's own shortcuts stay quiet while a slide is up
+      if (e.key === "Escape") onClose();
     };
-    addEventListener("keydown", onKey, true);
-    return () => removeEventListener("keydown", onKey, true);
-  }, [count, onClose]);
+    addEventListener("keydown", onKey);
+    return () => removeEventListener("keydown", onKey);
+  }, [open, onClose]);
+
+  const save = () => {
+    const next = embedUrl(pasted);
+    setBad(!next);
+    if (!next) return;
+    try {
+      localStorage.setItem(SAVED, next);
+    } catch {
+      /* the link still works for this visit */
+    }
+    setUrl(next);
+  };
+  const forget = () => {
+    try {
+      localStorage.removeItem(SAVED);
+    } catch {
+      /* nothing to clear */
+    }
+    setUrl(null);
+  };
 
   return (
-    <div className="explain" role="dialog" aria-label="Walkthrough">
-      <div className="explain-top">
-        <span>{count ? `${i + 1} / ${count}` : ""}</span>
-        <button onClick={onClose}>Close <i>Esc</i></button>
-      </div>
-      {count > 0 ? (
-        <div className="stage-box" ref={box}>
-          <iframe
-            key={files![i]}
-            title={files![i]}
-            src={`/slides/${files![i]}`}
-            style={{ width: W, height: H, transform: `translate(-50%, -50%) scale(${scale})` }}
-          />
-        </div>
+    <div className={`explain ${open ? "" : "closed"}`} role="dialog" aria-label="Presentation" aria-hidden={!open}>
+      {url ? (
+        <iframe className="canva" title="Presentation" src={url} allow="fullscreen" allowFullScreen />
       ) : (
-        <div className="stage-box empty">
-          {files ? "No slides found. Add .html files to the slides folder." : "Loading slides…"}
-        </div>
+        <form className="canva-setup" onSubmit={(e) => { e.preventDefault(); save(); }}>
+          <h2>Show your Canva presentation here</h2>
+          <p>
+            In Canva, open the design and choose Share, then More, then Embed, and copy the link. Paste it below.
+            The page remembers it. To set it for good, put it in <code>canva_url</code> in <code>config.toml</code>.
+          </p>
+          <input value={pasted} onChange={(e) => setPasted(e.target.value)} placeholder="https://www.canva.com/design/…" aria-label="Canva link" ref={input} />
+          <button type="submit">Show it</button>
+          {bad && <p className="bad">That doesn't look like a Canva link. It should start with https://www.canva.com/.</p>}
+        </form>
       )}
-      <div className="explain-nav">
-        <button onClick={() => go(-1)} disabled={i === 0}>Back</button>
-        <div className="progress">
-          {files?.map((f, n) => <button key={f} className={n === i ? "on" : ""} aria-label={f} onClick={() => setI(n)} />)}
-        </div>
-        <button onClick={() => go(1)} disabled={i >= count - 1}>Next</button>
+      <div className="explain-controls">
+        {url && <button onClick={forget}>Change link</button>}
+        <button onClick={onClose}>Close <i>Esc</i></button>
       </div>
     </div>
   );

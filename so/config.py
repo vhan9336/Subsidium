@@ -1,13 +1,10 @@
-"""Loads config.toml into plain dicts (stdlib tomllib, no extra dependency)."""
-from __future__ import annotations
-
+"""Reads config.toml into plain dicts."""
 import pathlib
 import tomllib
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 
 
-def load(path: str | pathlib.Path | None = None) -> dict:
-    p = pathlib.Path(path) if path else ROOT / "config.toml"
-    with open(p, "rb") as f:
+def load(path=None) -> dict:
+    with open(path or ROOT / "config.toml", "rb") as f:
         return tomllib.load(f)
