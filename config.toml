@@ -35,7 +35,7 @@ alpha = 0.3
 fail_after = 10            # consecutive rejections before the rangefinder is declared failed
 
 [presentation]
-canva_url = ""             # Canva embed link for the walkthrough (press E). Or paste it into the page once
+canva_url = "https://www.canva.com/design/DAHXstBabuc/BxQ_QNUbqWyd-j_Ihtj1bg/view"   # the presentation (press E). Leave empty to paste a link into the page instead
 
 [faults]
 lag_s = 2.5                # Resilience-style degraded rangefinder: final lag

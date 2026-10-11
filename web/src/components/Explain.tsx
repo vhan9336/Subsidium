@@ -1,5 +1,8 @@
-// The presentation, opened with E. It's a Canva design shown in an iframe.
-// Set canva_url in config.toml, or paste a link into the box the first time. The page remembers it.
+// The presentation, opened with E: a Canva design filling the whole screen.
+// The link comes from canva_url in config.toml, or from a box on the page the first time.
+//
+// Once opened, this stays mounted and is only hidden when closed. That way the Canva frame is
+// never reloaded, and reopening drops you on the slide you left.
 import { useEffect, useState } from "react";
 
 const SAVED = "subsidium-canva-url";
@@ -24,26 +27,38 @@ function saved(): string {
   }
 }
 
-export default function Explain({ onClose }: { onClose: () => void }) {
+export default function Explain({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [url, setUrl] = useState<string | null>(embedUrl(saved()));
   const [pasted, setPasted] = useState("");
   const [bad, setBad] = useState(false);
+  const [everOpened, setEverOpened] = useState(false); // nothing loads until the first time it's opened
+
+  useEffect(() => {
+    if (!open) return;
+    setEverOpened(true);
+    // when the frame has focus the browser keeps its keys, so make sure they come back to the page on close
+    return () => (document.activeElement as HTMLElement | null)?.blur();
+  }, [open]);
 
   // a link set in config.toml wins over one pasted earlier
   useEffect(() => {
+    if (!everOpened) return;
     fetch("/presentation.json")
       .then((r) => r.json())
       .then((d: { url: string }) => d.url && setUrl(embedUrl(d.url)))
       .catch(() => {});
-  }, []);
+  }, [everOpened]);
 
   useEffect(() => {
+    if (!open) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
     };
     addEventListener("keydown", onKey);
     return () => removeEventListener("keydown", onKey);
-  }, [onClose]);
+  }, [open, onClose]);
+
+  if (!everOpened) return null;
 
   const save = () => {
     const next = embedUrl(pasted);
@@ -66,11 +81,7 @@ export default function Explain({ onClose }: { onClose: () => void }) {
   };
 
   return (
-    <div className="explain" role="dialog" aria-label="Presentation">
-      <div className="explain-top">
-        <span>{url ? <button onClick={forget}>Use a different link</button> : "Presentation"}</span>
-        <button onClick={onClose}>Close <i>Esc</i></button>
-      </div>
+    <div className={`explain ${open ? "" : "closed"}`} role="dialog" aria-label="Presentation" aria-hidden={!open}>
       {url ? (
         <iframe className="canva" title="Presentation" src={url} allow="fullscreen" allowFullScreen />
       ) : (
@@ -85,6 +96,10 @@ export default function Explain({ onClose }: { onClose: () => void }) {
           {bad && <p className="bad">That doesn't look like a Canva link. It should start with https://www.canva.com/.</p>}
         </form>
       )}
+      <div className="explain-controls">
+        {url && <button onClick={forget}>Change link</button>}
+        <button onClick={onClose}>Close <i>Esc</i></button>
+      </div>
     </div>
   );
 }

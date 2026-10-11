@@ -124,7 +124,7 @@ export default function App() {
       else if ((k === "arrowleft" || k === "arrowright") && playback) cmd(stepCommand(playback, k === "arrowleft" ? -1 : 1));
       else if (k === "e") {
         e.preventDefault(); // or the box that opens would receive this keystroke
-        setExplain(true);
+        setExplain((open) => !open);
       }
       else if (k === "m") setProof((p) => !p);
       else if (k === "escape") setProof(false);
@@ -235,7 +235,7 @@ export default function App() {
 
       <ScenarioPanel s={s} scenarios={scenarios} clips={clips} voiceOn={voiceOn} onVoice={() => setVoiceOn(voice.toggle())}
         proof={proof} onProof={() => setProof((p) => !p)} onExplain={() => setExplain(true)} />
-      {explain && <Explain onClose={() => setExplain(false)} />}
+      <Explain open={explain} onClose={() => setExplain(false)} />
     </div>
   );
 }

@@ -289,3 +289,19 @@ h4 span { margin-left: 10px; font-weight: 400; font-size: 13px; color: var(--dim
 .proof table.grid { width: auto; table-layout: fixed; border-collapse: separate; border-spacing: 2px; }
 .proof table.grid td { width: 52px; height: 30px; padding: 0; text-align: center; border: 0; color: var(--ink); font: 13px var(--display); }
 .proof table.grid td.safest { outline: 2px solid var(--ink); outline-offset: -2px; font-weight: 700; }
+
+/* ---- presentation (E): a Canva design over the whole screen, hidden (not unloaded) when closed ---- */
+.explain { position: fixed; inset: 0; z-index: 50; background: #000; display: grid; place-items: center; }
+.explain.closed { visibility: hidden; pointer-events: none; }
+.canva { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+.explain-controls { position: absolute; top: 12px; right: 14px; z-index: 2; display: flex; gap: 8px; }
+.explain-controls button { padding: 6px 12px; font: 600 13px var(--body); color: var(--ink); background: rgba(0, 0, 0, 0.62); border: 1px solid rgba(255, 255, 255, 0.18); opacity: 0.55; transition: opacity 0.15s; }
+.explain-controls button:hover, .explain-controls button:focus-visible { opacity: 1; }
+.explain-controls i { font-style: normal; margin-left: 6px; color: var(--dim); font-size: 11px; }
+.canva-setup { width: min(640px, calc(100% - 48px)); display: grid; gap: 14px; }
+.canva-setup h2 { font: 600 30px/1.15 var(--display); }
+.canva-setup p { color: var(--dim); }
+.canva-setup input { width: 100%; padding: 10px 12px; font: 15px var(--body); color: var(--ink); background: transparent; border: 1px solid var(--rule); }
+.canva-setup input:focus { outline: 2px solid var(--cam); outline-offset: 2px; }
+.canva-setup button { justify-self: start; padding: 8px 18px; font: 600 16px var(--display); color: #06140b; background: var(--so); }
+.canva-setup .bad { color: var(--legacy); }
