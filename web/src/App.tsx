@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import CameraFeed from "./components/CameraFeed";
 import Explain from "./components/Explain";
 import FootageHud from "./components/FootageHud";
-import Playback from "./components/Playback";
+import Playback, { stepCommand } from "./components/Playback";
 import Proof from "./components/Proof";
 import ScenarioPanel from "./components/ScenarioPanel";
 import Scene3D from "./components/Scene3D";
@@ -101,11 +101,7 @@ export default function App() {
       const { scenarios, swapViews, playback } = latest.current;
       if (k === "v") setVoiceOn(voice.toggle());
       else if (k === " " && playback) cmd(playback.paused ? "resume" : "pause");
-      else if ((k === "arrowleft" || k === "arrowright") && playback) {
-        // one second per press: the server saves a varying number of moments per second, so work out how many
-        const perSecond = Math.round(playback.n / Math.max(playback.t1 - playback.t0, 1));
-        cmd(`seek:${playback.cursor + (k === "arrowleft" ? -perSecond : perSecond)}`);
-      }
+      else if ((k === "arrowleft" || k === "arrowright") && playback) cmd(stepCommand(playback, k === "arrowleft" ? -1 : 1));
       else if (k === "e") setExplain(true);
       else if (k === "m") setProof((p) => !p);
       else if (k === "escape") setProof(false);
