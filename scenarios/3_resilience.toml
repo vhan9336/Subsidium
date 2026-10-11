@@ -10,10 +10,8 @@ site_note = "Ground: NASA LRO image M1504323448 of the actual impact site, 11 Ju
 broadcast = "footage/broadcasts/resilience.mp4"
 broadcast_at = 120
 broadcast_note = "ispace's Mission 2 landing broadcast, 5 June 2025, with the lander telemetry display. Telemetry stops before touchdown. Footage © ispace."
-# On the real Blue Ghost footage neither brain isolates this slow lag (worst error: legacy 34 mm,
-# Second Opinion 28 mm, nothing excluded), so with `serve --video` this replay flies on the
-# simulator. Delete the next line to see the footage result.
-footage = false
+# With `serve --video` this replay flies on the mission's own broadcast and telemetry (clips.toml).
+clip = "resilience"
 steps = [
   { at = 0.0, do = ["fault:clear", "terrain_down", "reset"] },
   { at = 0.5, do = ["descend"] },

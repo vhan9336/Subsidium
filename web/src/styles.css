@@ -31,9 +31,24 @@ code { font: 14px Consolas, monospace; color: var(--ink); border-bottom: 1px sol
 .source.down { color: var(--legacy); } .source.down::before { background: var(--legacy); }
 
 /* ---- two columns divided by one rule ---- */
-main { display: grid; grid-template-columns: minmax(0, 1fr) minmax(540px, 37vw); min-height: 0; }
-.left { display: grid; grid-template-rows: minmax(0, 1fr) auto; gap: 16px; min-height: 0; padding: 18px var(--gutter) 14px 0; border-right: 1px solid var(--rule); }
-.right { display: grid; grid-template-rows: minmax(0, 1.1fr) auto auto minmax(0, 1fr); gap: 10px; min-height: 0; padding: 16px 0 12px var(--gutter); }
+main { display: grid; grid-template-columns: minmax(0, 1fr) minmax(420px, 31vw); min-height: 0; }
+.left { display: grid; grid-template-rows: minmax(0, 1fr); gap: 16px; min-height: 0; padding: 18px var(--gutter) 14px 0; border-right: 1px solid var(--rule); }
+.right { display: flex; flex-direction: column; gap: 10px; min-height: 0; padding: 22px 0 14px var(--gutter); }
+.mission { color: var(--dim); font-size: 14px; } .mission b { color: var(--ink); font-weight: 600; margin-right: 8px; }
+.right h2 { font: 600 clamp(26px, 2.3vw, 40px)/1.12 var(--display); padding-left: 16px; border-left: 5px solid var(--faint); text-wrap: balance; }
+.right h2.good { border-color: var(--so); } .right h2.warn { border-color: var(--rf); } .right h2.bad { border-color: var(--legacy); }
+.right h2.idle { color: var(--dim); font-weight: 400; }
+.right .then { padding-left: 21px; }
+.three { margin-top: auto; }
+.three > div { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; padding: 12px 0 10px; border-top: 1px solid var(--rule); }
+.three dt { font: 700 20px/1.15 var(--display); letter-spacing: 0.02em; }
+.three dt span { display: block; margin-top: 3px; font: 400 14px/1.3 var(--body); letter-spacing: 0; color: var(--dim); }
+.three dd { font: 600 clamp(40px, 3.6vw, 64px)/1 var(--display); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.three small { font: 400 17px var(--body); color: var(--dim); }
+.three em { display: inline-block; min-width: 3.6em; text-align: right; font: 600 0.5em var(--display); font-style: normal; color: var(--so); }
+.three .bad em { color: var(--legacy); }
+.right .credit { margin-top: auto; padding-top: 10px; -webkit-line-clamp: 4; } .right .credit b { color: var(--dim); }
+.three + .credit { margin-top: 0; }
 main.offline { display: block; padding: 18vh 0; }
 main.offline h2 { font: 600 34px/1.2 var(--display); margin-bottom: 10px; }
 main.offline p { color: var(--dim); }
@@ -76,12 +91,12 @@ h4 span { margin-left: 10px; font-weight: 400; font-size: 13px; color: var(--dim
 .hud-progress { position: absolute; inset: 0 0 auto; height: 2px; background: var(--ink); transform-origin: left; opacity: 0.7; }
 .hud-source { position: absolute; left: 22px; top: 16px; }
 .hud-source b { font: 700 13px/1 var(--display); letter-spacing: 0.1em; text-transform: uppercase; margin-right: 10px; }
-.hud-source span { font-size: 13px; color: var(--ink); opacity: 0.8; }
+.hud-source span { display: none; }
 .hud-source p { margin-top: 5px; font: 600 17px/1.2 var(--display); color: var(--dim); }
 .hud-source p.lock { color: var(--cam); }
 .hud-verdict { position: absolute; right: 22px; top: 14px; font: 700 24px/1.1 var(--display); letter-spacing: 0.01em; padding-right: 12px; border-right: 4px solid var(--faint); text-align: right; }
 .hud-verdict.good { border-color: var(--so); } .hud-verdict.warn { border-color: var(--rf); color: var(--rf); } .hud-verdict.bad { border-color: var(--legacy); color: var(--legacy); }
-.tape { position: absolute; right: 60px; top: 76px; bottom: 132px; width: 2px; background: rgba(237, 237, 234, 0.55); container-type: size; text-shadow: none; }
+.tape { position: absolute; right: 150px; top: 76px; bottom: 132px; width: 2px; background: rgba(237, 237, 234, 0.55); container-type: size; text-shadow: none; }
 .tape > * { position: absolute; top: 0; transition: transform 0.12s linear; }
 .tape-tick { right: 9px; margin-top: -8px; font: 600 13px/16px var(--display); color: var(--ink); text-shadow: 0 1px 3px #000; }
 .tape-tick::after { content: ""; position: absolute; right: -9px; top: 8px; width: 6px; height: 1px; background: var(--ink); }
@@ -93,6 +108,15 @@ h4 span { margin-left: 10px; font-weight: 400; font-size: 13px; color: var(--dim
 .tape-caret { margin-top: -8px; border: 8px solid transparent; }
 .tape-caret.legacy { right: 26px; border-left: 13px solid var(--legacy); border-right: 0; }
 .tape-caret.so { left: 26px; border-right: 13px solid var(--so); border-left: 0; }
+.tape-caret b { position: absolute; top: -9px; font: 700 13px/18px var(--display); letter-spacing: 0.04em; white-space: nowrap; font-style: normal; text-shadow: 0 1px 3px #000, 0 0 2px #000; }
+.tape-caret.legacy b { right: 18px; color: var(--legacy); } .tape-caret.so b { left: 18px; color: var(--so); }
+/* a mission broadcast has its own graphics on the right, so the tape sits on the left of the picture */
+.view.broadcast.is-main img { object-position: right center; }
+.hud.broadcast .tape { right: auto; left: 132px; top: 96px; }
+.hud.broadcast .hud-source { display: none; }
+.hud.broadcast .hud-verdict { right: auto; left: 22px; text-align: left; padding: 4px 12px; background: rgba(0, 0, 0, 0.78); border-right: 0; border-left: 4px solid var(--faint); }
+.hud.broadcast .hud-verdict.good { border-color: var(--so); }
+.hud.broadcast .tape-tick, .hud.broadcast .tape-caret b { background: rgba(0, 0, 0, 0.55); padding: 0 4px; }
 .tape small { top: auto; bottom: -22px; right: 9px; font: 400 12px var(--body); color: var(--ink); text-shadow: 0 1px 3px #000; }
 
 /* labels inside the 3D view */
@@ -185,6 +209,25 @@ h4 span { margin-left: 10px; font-weight: 400; font-size: 13px; color: var(--dim
 .plot { position: relative; flex: 1; min-height: 0; }
 .plot canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
 
+/* ---- the proof screen (M): every number behind the verdict ---- */
+.proof .live { grid-column: 1 / -1; display: grid; grid-template-columns: 1.3fr 0.8fr 1.1fr; gap: var(--gutter); height: 250px; margin-bottom: 14px; padding-bottom: 12px; border-bottom: 1px solid var(--rule); }
+.proof .live > div { display: flex; flex-direction: column; min-height: 0; }
+.proof .live h4 { margin-top: 0; border-top: 0; padding-top: 0; }
+.proof { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0 var(--gutter); padding: 16px 0 10px; overflow: auto; align-content: start; }
+.proof h4 { margin-top: 14px; padding-top: 10px; border-top: 1px solid var(--rule); }
+.proof h4:first-child { margin-top: 0; border-top: 0; padding-top: 0; }
+.proof table { width: 100%; border-collapse: collapse; font: 15px/1.3 var(--display); font-variant-numeric: tabular-nums; }
+.proof th { text-align: left; font: 400 12px var(--body); color: var(--dim); padding: 2px 10px 4px 0; }
+.proof td { padding: 5px 10px 5px 0; border-top: 1px solid var(--rule); vertical-align: top; }
+.proof td.nav { color: var(--nav); } .proof td.rf { color: var(--rf); } .proof td.cam { color: var(--cam); }
+.proof td.truth { color: var(--truth); } .proof td.legacy { color: var(--legacy); } .proof td.so { color: var(--so); }
+.proof td.pass { color: var(--so); } .proof td.fail { color: var(--legacy); font-weight: 700; }
+.proof tr.out td:nth-child(n + 2) { color: var(--off); }
+.proof .rules td { font: 13px/1.35 var(--body); color: var(--dim); }
+.proof .rules tr.now td { color: var(--ink); font-weight: 600; } .proof .rules tr.now td:first-child { box-shadow: inset 3px 0 var(--so); padding-left: 10px; }
+.proof .eq { font: 600 19px/1.4 var(--display); margin: 4px 0 6px; } .proof .eq b { color: var(--cam); }
+.proof .fine { color: var(--dim); font-size: 13px; line-height: 1.45; margin: 6px 0 0; } .proof ul.fine { padding-left: 18px; } .proof li { margin-bottom: 4px; }
+
 /* ---- camera-only footage ---- */
 .right.tracking { display: block; }
 .tracking dl { display: flex; gap: 56px; margin: 18px 0 22px; }
@@ -194,8 +237,11 @@ h4 span { margin-left: 10px; font-weight: 400; font-size: 13px; color: var(--dim
 .tracking p { color: var(--dim); max-width: 52ch; }
 
 /* ---- bottom: missions, then the manual controls, quieter ---- */
-.deck { border-top: 1px solid var(--rule); padding-bottom: 12px; }
-.missions { display: flex; flex-wrap: wrap; gap: 0 40px; }
+.deck { border-top: 1px solid var(--rule); padding-bottom: 12px; display: grid; grid-template-columns: 1fr auto; align-items: center; }
+.deck .manual { grid-column: 1 / -1; }
+.deck .math { font: 600 16px var(--display); color: var(--dim); padding: 6px 0; } .deck .math:hover, .deck .math.on { color: var(--ink); }
+.deck .math i { font-style: normal; margin-left: 6px; padding: 1px 6px; border: 1px solid var(--rule); color: var(--dim); }
+.missions { display: flex; flex-wrap: wrap; gap: 0 30px; }
 .missions button { display: grid; grid-template-columns: auto auto; column-gap: 10px; align-items: baseline; padding: 11px 0 8px; margin-top: -1px; border-top: 3px solid transparent; color: var(--dim); }
 .missions button:hover { color: var(--ink); }
 .missions button.on { color: var(--ink); border-color: var(--ink); }

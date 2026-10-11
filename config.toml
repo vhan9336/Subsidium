@@ -13,7 +13,7 @@ lookback_s = 0.5           # frame gap for tau; raise if tau is noisy, lower if 
 grid = 6                   # hazard map tiles per side
 min_quality = 0.3          # below this the camera abstains (low texture / low contrast / dark)
 jpeg_quality = 90          # camera stream sent to the dashboard
-hazard_tint = 0.16         # strength of the hazard-map colour over the camera image (0 = off)
+hazard_tint = 0.30         # strength of the hazard-map colour over the camera image (0 = off)
 
 [sensors]                  # 1-sigma noise models used by the integrity monitor
 rf_sigma_mm = 3.0          # rangefinder: fixed part

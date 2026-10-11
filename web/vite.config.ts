@@ -15,6 +15,7 @@ export default defineConfig({
       "/cmd": engine,
       "/scenarios": engine,
       "/clips": engine,
+      "/proof": engine,
       "/sites": engine,
     },
   },

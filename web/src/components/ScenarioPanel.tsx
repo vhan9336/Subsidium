@@ -18,11 +18,13 @@ const FAULTS: [string, string][] = [
   ["cam_blind", "Camera blind"],
 ];
 
-export default function ScenarioPanel({ s, scenarios, voiceOn, onVoice }: {
+export default function ScenarioPanel({ s, scenarios, voiceOn, onVoice, proof, onProof }: {
   s: State | null;
   scenarios: ScenarioInfo[];
   voiceOn: boolean;
   onVoice: () => void;
+  proof: boolean;
+  onProof: () => void;
 }) {
   const active = s?.scenario ?? null;
   const mixed = scenarios.some((sc) => sc.footage); // real footage is loaded: say what each replay flies on
@@ -33,11 +35,12 @@ export default function ScenarioPanel({ s, scenarios, voiceOn, onVoice }: {
           <button key={sc.id} className={active?.id === sc.id ? "on" : ""} onClick={() => cmd(`scenario:${sc.id}`)}>
             <i>{i + 1}</i>
             <span>{sc.name}</span>
-            <small>{sc.mission}{mixed && <em>{sc.footage ? "real footage" : "simulator"}</em>}</small>
+            <small>{sc.mission}{mixed && <em>{sc.clip ? "real broadcast" : sc.footage ? "real footage" : "simulator"}</em>}</small>
           </button>
         ))}
       </nav>
-      <div className="manual">
+      <button className={`math ${proof ? "on" : ""}`} onClick={onProof}>{proof ? "Back to the landing" : "The math"} <i>M</i></button>
+      {proof && <div className="manual">
         <span className="label">Fly by hand</span>
         {MOTION.map(([key, name, c]) => (
           <button key={c} className={c === "descend" && s?.descending ? "on" : ""} onClick={() => cmd(c)}>
@@ -55,7 +58,7 @@ export default function ScenarioPanel({ s, scenarios, voiceOn, onVoice }: {
           {s?.recording ? "Recording" : "Record"}
         </button>
         <button className={voiceOn ? "on" : ""} onClick={onVoice}>Voice {voiceOn ? "on" : "off"} <i>V</i></button>
-      </div>
+      </div>}
     </footer>
   );
 }

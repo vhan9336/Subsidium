@@ -22,7 +22,7 @@ from .fusion.types import Inputs
 from .scenarios import ScenarioRunner, load_all
 from .sources.base import Sample, Source
 from .sources.replay import Recorder, ReplaySource
-from .vision.ttc import TTCEstimator
+from .vision.ttc import TTCEstimator, TTCResult
 
 
 class Pipeline:
@@ -73,7 +73,7 @@ class Pipeline:
                 site = ROOT / spec["site"] if spec.get("site") else None
                 self.src.command("texture:" + (str(site) if site and site.exists() else ""))
                 if hasattr(self.src, "use"):          # footage + simulator: pick the one this replay can run on
-                    self.src.use(spec.get("footage", True))
+                    self.src.use(spec.get("footage", True), spec.get("clip"))
                 self.runner.start(spec, t)
         elif name == "reset":
             self.src.command("reset")
@@ -81,6 +81,7 @@ class Pipeline:
             self.legacy.reset()
             self.so.reset()
             self.steps_hist.clear()
+            self.faults.hist.clear()                  # a lagging rangefinder must not replay readings from before the reset
             self.moving_since = None
             self._reset_score()
         else:
@@ -128,10 +129,15 @@ class Pipeline:
         # camera: only meaningful once the whole look-back window is in steady descent
         self.moving_since = (self.moving_since or t) if v > 1.0 else None
         steady = self.moving_since is not None and t - self.moving_since > self.ttc.lookback_s + 0.4
-        res = self.ttc.update(t, s.frame)
-        gain = getattr(self.src, "tau_gain", 1.0)     # tilted-camera calibration (real footage)
-        tau_raw = None if res.tau is None else res.tau * gain
-        tau, q = self.faults.cam(tau_raw if steady else None, res.quality if steady else 0.0)
+        if getattr(self.src, "reconstructed_cam", False):
+            # footage with no descent camera in it: the source supplies the camera reading, no vision runs
+            res = TTCResult(None, None, 0.0, 0, 0.0)
+            tau_raw, q_raw = self.src.cam_reading()
+        else:
+            res = self.ttc.update(t, s.frame)
+            gain = getattr(self.src, "tau_gain", 1.0)     # tilted-camera calibration (real footage)
+            tau_raw, q_raw = (None if res.tau is None else res.tau * gain), res.quality
+        tau, q = self.faults.cam(tau_raw if steady else None, q_raw if steady else 0.0)
         rf = self.faults.rf(t, s.rf_raw)
 
         x = Inputs(t, h_nav, v, rf, tau, q)
@@ -148,7 +154,7 @@ class Pipeline:
             "t": t, "kind": self.src.kind, "recording": self.recorder is not None,
             "truth": truth, "nav": sb_.detail["witness"]["nav"]["h"], "nav_raw": h_nav,
             "rf": rf, "rf_raw": s.rf_raw, "cam": cam_h, "v": v, "tau": tau, "q": round(q, 2),
-            "tau_raw": tau_raw, "q_raw": round(res.quality, 2),
+            "tau_raw": tau_raw, "q_raw": round(q_raw, 2),
             "clip": self.src.info() if hasattr(self.src, "info") else None,
             "h0": h0, "descending": s.descending,
             "legacy": {"est": lb.est, "status": lb.status, "excluded": lb.excluded},
@@ -180,6 +186,9 @@ class Pipeline:
                                   (40, int(190 * (1 - a)), int(255 * a)), -1)
             a = float(self.cfg["camera"].get("hazard_tint", 0.25))
             img = cv2.addWeighted(tint, a, img, 1 - a, 0)
+            for k in range(1, G):                              # tile edges, so it reads as a grid
+                cv2.line(img, (k * w // G, 0), (k * w // G, h), (20, 20, 20), 1)
+                cv2.line(img, (0, k * h // G), (w, k * h // G), (20, 20, 20), 1)
             if res.site is not None:
                 i, j = res.site
                 cx, cy = int((j + 0.5) * w / G), int((i + 0.5) * h / G)

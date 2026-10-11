@@ -36,13 +36,27 @@ export function plainStatus(status: string, brain: "legacy" | "so"): string {
 /** Error beyond this (mm) is shown as bad. A display threshold only, not an engine setting. */
 export const ERR_BAD_MM = 25;
 
-export const mm = (v: number | null | undefined) => (v == null ? "—" : `${Math.round(v)}`);
+// The engine works in rig millimetres. Real footage is shown in the mission's own metres:
+// setUnit() is called once per render with the clip's scale, and mm() / signed() convert.
+let perMm = 1;
+let unitName = "mm";
+export function setUnit(mmPerM: number | null | undefined) {
+  perMm = mmPerM ? 1 / mmPerM : 1;
+  unitName = mmPerM ? "m" : "mm";
+}
+export const unit = () => unitName;
+const show = (x: number) => (perMm < 1 ? x.toFixed(1) : Math.round(x).toLocaleString("en-US"));
+
+export const mm = (v: number | null | undefined) => (v == null ? "—" : show(v * perMm));
 
 export const signed = (v: number | null | undefined) => {
   if (v == null) return "—";
-  const r = Math.round(v);
-  return `${r > 0 ? "+" : r < 0 ? "−" : "±"}${Math.abs(r)}`;
+  const r = perMm < 1 ? Math.round(v * perMm * 10) / 10 : Math.round(v * perMm);
+  return `${r > 0 ? "+" : r < 0 ? "−" : "±"}${show(Math.abs(r))}`;
 };
+
+/** A tick spacing (engine mm) that gives at most about six ticks up to `top`. */
+export const niceStep = (top: number) => [25, 50, 100, 250, 500, 1000, 2500, 5000].find((st) => top / st <= 6.5) ?? 10000;
 
 /** Short labels for engine events (plot markers and the event log). */
 export const EVENT_LABEL: Record<string, string> = {

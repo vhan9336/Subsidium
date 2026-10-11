@@ -23,7 +23,7 @@ mm_per_m = 10
 # The SCALPSS cameras look outward, not straight down, so raw time-to-contact reads long.
 # 0.598 was fitted on the first 4 s only; eval/run_video.py --calib-s 4 scores the rest.
 tau_gain = 0.598
-hazard = false      # the hazard map assumes a straight-down view; this camera is oblique
+hazard = true       # shown because it reads well; this camera is oblique, so treat the grid as indicative, not measured
 note = "Camera: real footage. Altitude: NASA's on-screen labels, 10 mm = 1 m. Rangefinder and inertial are generated from those labels."
 
 [perseverance]
@@ -48,3 +48,51 @@ start = 24.5
 end = 34.4          # last complete image before impact
 hazard = false
 note = "Tracking only: NASA's replay is a time-lapse with uneven speed, so seconds of video are not seconds of flight."
+
+# ---- the crash broadcasts -------------------------------------------------------------------
+# These are the missions' own live broadcasts. The altitude record is the lander telemetry shown
+# on screen, read off every 5 s of video (eval/truth/*_broadcast.csv). There is no descent
+# camera in them, so the camera witness is reconstructed from the altitude, not measured.
+#
+#   fit       "linear" joins the readings with straight lines (default: a smooth cubic)
+#   believed  true = the record is what the lander BELIEVED, not where it was; the true altitude
+#             is that plus offset_m from offset_at (seconds of video) onward
+#   camera    "reconstructed" = no vision: time-to-contact is computed from the true altitude
+
+[hakuto_r]
+name = "HAKUTO-R Mission 1"
+mission = "ispace · Moon, 25 April 2023 · ispace live broadcast"
+credit = "© ispace"
+file = "footage/broadcasts/hakuto_r_m1.mp4"
+view = [412, 0, 868, 720]    # leaves out the mission-control audience inset on the left
+start = 125.0
+end = 203.0
+every = 2
+truth = "eval/truth/hakuto_r_m1_broadcast.csv"
+fit = "linear"
+mm_per_m = 0.5
+believed = true
+offset_m = 5000     # ispace, 26 May 2023: the lander judged it had landed while about 5 km up
+offset_at = 133.0   # ASSUMED. ispace published the size of the error, not when in this video it began
+camera = "reconstructed"
+hazard = false
+replay_only = true
+# The broadcast badges its telemetry panel "UPDATE" for most of the clip and "simulation" near the
+# end, so the on-screen altitude is ispace's display of the descent, not guaranteed raw telemetry.
+note = "Red follows the altitude on ispace's own broadcast display (the broadcast marks that panel 'simulation' near the end). White is that plus the 5 km error ispace reported. Rangefinder and camera are reconstructed from the white line; when the error begins in this video is assumed."
+
+[resilience]
+name = "Resilience (Mission 2)"
+mission = "ispace · Moon, 5 June 2025 · ispace live broadcast"
+credit = "© ispace"
+file = "footage/broadcasts/resilience.mp4"
+view = [275, 0, 1005, 720]   # leaves out the presenter inset on the left
+start = 150.0       # the last 25 s. Started at 120 s instead, Second Opinion does NOT isolate the lag (inertial has drifted too long to vouch for the camera)
+end = 175.5         # the last altitude shown is 52 m at 187 km/h; the next reading is -223 m, then nothing
+truth = "eval/truth/resilience_broadcast.csv"
+fit = "linear"
+mm_per_m = 0.5
+camera = "reconstructed"
+hazard = false
+replay_only = true
+note = "White is the altitude on ispace's own broadcast display. Rangefinder, inertial and camera are reconstructed from it; the rangefinder lag is injected, its real size was not published."

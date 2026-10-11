@@ -10,9 +10,8 @@ site_note = "Ground: NASA LRO image M1437131607R of the actual impact site, take
 broadcast = "footage/broadcasts/hakuto_r_m1.mp4"
 broadcast_at = 140
 broadcast_note = "ispace's own landing broadcast, 25 April 2023. Its display counts the altitude down to zero; ispace later reported the lander was still about 5 km up. Footage © ispace."
-# Needs the ground to move under the lander, which recorded footage cannot do, so with
-# `serve --video` this replay flies on the simulator.
-footage = false
+# With `serve --video` this replay flies on the mission's own broadcast and telemetry (clips.toml).
+clip = "hakuto_r"
 steps = [
   { at = 0.0, do = ["fault:clear", "terrain_up", "reset"] },
   { at = 0.5, do = ["descend"] },

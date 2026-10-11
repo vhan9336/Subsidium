@@ -37,13 +37,16 @@ class Truth:
     """Altitude record (t, alt_m) -> smooth altitude in rig mm. Callouts are coarse (whole metres),
     so a cubic is fitted through them rather than stepping from one to the next."""
 
-    def __init__(self, path, mm_per_m: float):
+    def __init__(self, path, mm_per_m: float, fit: str = "cubic"):
         rows = list(csv.DictReader(open(ROOT / path)))
         self.t = np.array([float(r["t"]) for r in rows])
-        self.poly = np.polyfit(self.t, np.array([float(r["alt_m"]) for r in rows]) * mm_per_m, 3)
+        self.mm = np.array([float(r["alt_m"]) for r in rows]) * mm_per_m
+        # readings that are already fine-grained (telemetry) are joined with straight lines
+        self.poly = None if fit == "linear" else np.polyfit(self.t, self.mm, 3)
 
     def alt(self, t: float) -> float:
-        return float(max(np.polyval(self.poly, min(max(t, self.t[0]), self.t[-1])), 1.0))
+        t = min(max(t, self.t[0]), self.t[-1])
+        return float(max(np.interp(t, self.t, self.mm) if self.poly is None else np.polyval(self.poly, t), 1.0))
 
 
 class VideoSource(Source):
@@ -71,7 +74,13 @@ class VideoSource(Source):
         self.every = int(c.get("every", 1))               # use every n-th frame of fast footage
         self.start, self.end = float(c.get("start", 0.0)), float(c["end"])
         self.view = c.get("view")                         # [x, y, w, h] crop of the source frame
-        self.truth = Truth(c["truth"], float(c.get("mm_per_m", 10.0))) if c.get("truth") else None
+        scale = float(c.get("mm_per_m", 10.0))
+        self.truth = Truth(c["truth"], scale, c.get("fit", "cubic")) if c.get("truth") else None
+        # a record of what the lander believed: the true altitude is that plus a reported error
+        self.offset = float(c.get("offset_m", 0.0)) * scale if c.get("believed") else 0.0
+        self.offset_at = float(c.get("offset_at", 0.0))
+        self.reconstructed_cam = c.get("camera") == "reconstructed"   # read by the pipeline
+        self._cam = (None, 0.0)
         self.tau_gain = float(c.get("tau_gain", 1.0))     # read by the pipeline
         self.show_hazard = bool(c.get("hazard", True))    # read by the pipeline
         self.h0 = self.truth.alt(self.start) if self.truth else 0.0
@@ -107,12 +116,18 @@ class VideoSource(Source):
         c = self.clip
         return {"id": c["id"], "name": c["name"], "mission": c.get("mission"), "credit": c.get("credit"),
                 "note": c.get("note"), "truth": self.truth is not None, "mm_per_m": c.get("mm_per_m"),
+                "camera": "reconstructed" if self.reconstructed_cam else "measured",
+                "believed": bool(c.get("believed")),
                 "tau_gain": self.tau_gain, "pos": round(self.pos - self.start, 1),
                 "dur": round(self.end - self.start, 1)}
 
     def catalog(self) -> list[dict]:
         return [{"id": c["id"], "name": c["name"], "mission": c.get("mission"), "truth": bool(c.get("truth"))}
-                for c in self.clips.values()]
+                for c in self.clips.values() if not c.get("replay_only")]
+
+    def cam_reading(self) -> tuple[float | None, float]:
+        """Time-to-contact and lock quality for a clip with no descent camera in it."""
+        return self._cam
 
     # ---- Source interface ------------------------------------------------------------------
     def command(self, name: str):
@@ -126,7 +141,10 @@ class VideoSource(Source):
             if self.pos - self.start > 0.5:               # ignore the reset that follows our own loop
                 self._rewind()
         elif name.startswith("clip:") and name[5:] in self.clips:
-            self._open(name[5:])
+            if name[5:] != self.clip["id"]:
+                self._open(name[5:])
+            elif self.pos - self.start > 0.5:
+                self._rewind()
 
     def read(self) -> Sample:
         dt = self.every / self.fps
@@ -140,9 +158,16 @@ class VideoSource(Source):
             if self.hold > HOLD_S:                        # loop: time restarts, the pipeline resets
                 self.t = 0.0
                 self._rewind()
-        alt = self.truth.alt(self.pos) if self.truth else None
-        steps = int(round((self.h0 - alt) / self.mm_per_step)) if alt is not None else 0
+        nav = self.truth.alt(self.pos) if self.truth else None      # what the inertial unit believes
+        steps = int(round((self.h0 - nav) / self.mm_per_step)) if nav is not None else 0
+        alt = nav
+        if nav is not None and self.offset and self.pos >= self.offset_at:
+            alt = nav + self.offset * min(1.0, self.pos - self.offset_at)     # the error opens over 1 s
         rf = float(alt + self.rng.normal(0, 1.5)) if alt is not None else None
+        if self.reconstructed_cam and alt is not None:
+            # descent rate over the same 0.6 s the pipeline measures it over, so tau x v gives the altitude back
+            rate = (self.truth.alt(self.pos - 0.6) - nav) / 0.6
+            self._cam = (float(alt / rate * (1 + self.rng.normal(0, 0.02))), 0.9) if rate > 1.0 else (None, 0.0)
         return Sample(self.t, self.frame, rf, steps, alt, self.playing and not self.ended, self.h0)
 
     def close(self):

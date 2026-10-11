@@ -45,6 +45,8 @@ export type ClipState = {
   truth: boolean; // false = tracking only: no altitude record, nothing is voted on
   mm_per_m?: number | null;
   tau_gain: number;
+  camera?: "measured" | "reconstructed"; // reconstructed = no descent camera in this footage
+  believed?: boolean; // the altitude record is what the lander believed, not where it was
   pos: number;
   dur: number;
 };
@@ -88,4 +90,5 @@ export type ScenarioInfo = {
   expect?: string;
   source?: string;
   footage?: boolean; // flies on real footage (true) or on the simulator (false)
+  clip?: string | null; // flies on its own mission's broadcast and telemetry
 };

@@ -20,12 +20,17 @@ class HybridSource(Source):
         self.video, self.sim, self.cur = video, sim, video
         self.mm_per_step = video.mm_per_step
         self.t, self._last = 0.0, None
+        self.home = video.clip["id"]             # the clip replays fly on unless they name their own
 
     # what the pipeline reads off a source follows whichever one is flying
     kind = property(lambda self: self.cur.kind)
     h0 = property(lambda self: self.cur.h0)
     tau_gain = property(lambda self: getattr(self.cur, "tau_gain", 1.0))
     show_hazard = property(lambda self: getattr(self.cur, "show_hazard", True))
+    reconstructed_cam = property(lambda self: getattr(self.cur, "reconstructed_cam", False))
+
+    def cam_reading(self):
+        return self.cur.cam_reading()
 
     def info(self) -> dict | None:
         return self.video.info() if self.cur is self.video else None
@@ -33,8 +38,10 @@ class HybridSource(Source):
     def catalog(self) -> list[dict]:
         return self.video.catalog()
 
-    def use(self, footage: bool):
+    def use(self, footage: bool, clip: str | None = None):
         new = self.video if footage else self.sim
+        if footage:
+            self.video.command(f"clip:{clip or self.home}")
         if new is self.cur:
             return
         self.cur, self._last = new, None
@@ -45,8 +52,8 @@ class HybridSource(Source):
         if name.startswith("texture:"):
             self.sim.command(name)
         elif name.startswith("clip:"):
+            self.home = name[5:] if name[5:] in self.video.clips else self.home
             self.use(True)
-            self.video.command(name)
         else:
             self.cur.command(name)
 

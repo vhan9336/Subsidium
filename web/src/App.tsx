@@ -1,21 +1,18 @@
 import { useEffect, useRef, useState } from "react";
-import AltitudePlot from "./components/AltitudePlot";
-import BrainCard from "./components/BrainCard";
 import CameraFeed from "./components/CameraFeed";
 import FootageHud from "./components/FootageHud";
-import Lanes from "./components/Lanes";
+import Proof from "./components/Proof";
 import ScenarioPanel from "./components/ScenarioPanel";
 import Scene3D from "./components/Scene3D";
-import VoteTriangle from "./components/VoteTriangle";
 import { cmd, useTelemetry } from "./telemetry";
-import { ERR_BAD_MM, EVENT_LABEL, mm, signed } from "./theme";
-import type { ClipInfo, ScenarioInfo, State } from "./types";
+import { ERR_BAD_MM, EVENT_LABEL, mm, plainStatus, setUnit, signed, unit } from "./theme";
+import type { ScenarioInfo, State } from "./types";
 import { voice } from "./voice";
 
 type Logged = { key: string; t: number };
-type View = "tv" | "cam" | "3d";
+type View = "cam" | "3d";
 type Tone = "good" | "warn" | "bad" | "idle";
-const VIEW_NAME: Record<View, string> = { tv: "Mission broadcast", cam: "Lander camera", "3d": "3D view" };
+const VIEW_NAME: Record<View, string> = { cam: "Lander camera", "3d": "3D view" };
 const SOURCE = { sim: "Simulator", live: "Live rig", replay: "Recorded run", video: "Real footage" };
 
 const KEYS: Record<string, string> = {
@@ -48,7 +45,7 @@ function verdict(s: State, log: Logged[]): string {
 }
 
 function consequence(legacyErr: number | null, soErr: number | null): string {
-  const off = (e: number) => `${Math.abs(Math.round(e))} mm too ${e < 0 ? "low" : "high"}`;
+  const off = (e: number) => `${mm(Math.abs(e))} ${unit()} too ${e < 0 ? "low" : "high"}`;
   if (legacyErr == null || soErr == null) return "";
   const l = Math.abs(legacyErr) > ERR_BAD_MM;
   const o = Math.abs(soErr) > ERR_BAD_MM;
@@ -61,9 +58,9 @@ function consequence(legacyErr: number | null, soErr: number | null): string {
 export default function App() {
   const [log, setLog] = useState<Logged[]>([]);
   const [scenarios, setScenarios] = useState<ScenarioInfo[]>([]);
-  const [clips, setClips] = useState<ClipInfo[]>([]);
   const [voiceOn, setVoiceOn] = useState(false);
   const [picked, setPicked] = useState<View | null>(null);
+  const [proof, setProof] = useState(false);
   const { state: s, connected, history } = useTelemetry((key: string, st: State) => {
     voice.say(key);
     if (EVENT_LABEL[key]) setLog((l) => [...l.filter((e) => e.t <= st.t).slice(-8), { key, t: st.t }]);
@@ -71,35 +68,24 @@ export default function App() {
 
   useEffect(() => {
     fetch("/scenarios").then((r) => r.json()).then(setScenarios).catch(() => {});
-    fetch("/clips").then((r) => r.json()).then(setClips).catch(() => {});
   }, [connected]);
 
   const clip = s?.clip ?? null;
+  setUnit(clip?.mm_per_m); // real footage is shown in the mission's metres, the rig in mm
+  const rebuilt = clip?.camera === "reconstructed"; // a mission broadcast: no descent camera in the picture
   const voting = !clip || clip.truth; // a clip without an altitude record is tracking-only
   const sc = s?.scenario ?? null;
-  const broadcast = sc?.broadcast ?? null;
 
-  // One view is large, the rest are thumbnails beside it. Real footage leads with the camera and
-  // the software layer on it; the simulator leads with the 3D view. A mission's broadcast, when
-  // there is one, is only ever a thumbnail unless picked.
-  const views: View[] = !voting ? ["cam"]
-    : [...(s?.kind === "video" ? ["cam", "3d"] : ["3d", "cam"]), ...(broadcast ? ["tv"] : [])] as View[];
+  // Real footage is one picture with the software layer on it. The simulator and the rig lead with
+  // the 3D view and keep the camera as a thumbnail.
+  const views: View[] = s?.kind === "video" ? ["cam"] : ["3d", "cam"];
   const main: View = picked && views.includes(picked) ? picked : views[0];
   const place = (v: View) => (v === main ? "is-main" : "is-thumb");
   const cycle = useRef(() => {});
   cycle.current = () => setPicked(views[(views.indexOf(main) + 1) % views.length]);
   const toggleVoice = () => setVoiceOn(voice.toggle());
 
-  // a new replay starts with a clean history, and its broadcast from the chosen moment
-  const tv = useRef<HTMLVideoElement>(null);
-  const tvAt = sc?.broadcast_at ?? 0;
-  useEffect(() => {
-    setLog([]);
-    if (tv.current) {
-      tv.current.currentTime = tvAt;
-      tv.current.play().catch(() => {});
-    }
-  }, [sc?.id, broadcast, tvAt]);
+  useEffect(() => setLog([]), [sc?.id]); // a new replay starts with a clean history
 
   useEffect(() => setPicked(null), [s?.kind]); // footage and simulator each lead with their own view
 
@@ -108,6 +94,8 @@ export default function App() {
       if (e.ctrlKey || e.metaKey || e.altKey || e.repeat) return;
       const k = e.key.toLowerCase();
       if (k === "v") setVoiceOn(voice.toggle());
+      else if (k === "m") setProof((p) => !p);
+      else if (k === "escape") setProof(false);
       else if (k === "c") cycle.current();
       else if (KEYS[k]) {
         if (k === "r") setLog([]);
@@ -124,10 +112,7 @@ export default function App() {
   const legacyErr = s?.truth != null && s.legacy.est != null ? s.legacy.est - s.truth : null;
   const soErr = s?.truth != null && s.so.est != null ? s.so.est - s.truth : null;
   const reanchored = !!s && log.some((e) => e.key === "terrain_change" && s.t - e.t < 4);
-  // inertial height minus true altitude: how far the ground under the lander has moved since reset
-  const terrain = s?.truth != null ? s.nav_raw - s.truth : 0;
   const [line, tone] = s && voting ? headline(s, log) : ["", "idle" as Tone];
-  const tau = s ? s.tau ?? s.tau_raw : null;
 
   return (
     <div className="app">
@@ -140,108 +125,56 @@ export default function App() {
         </div>
       </header>
 
-      {s ? (
+      {s && proof ? <Proof s={s} history={history} reanchored={reanchored} /> : s ? (
         <main>
           <section className="left">
             <div className={`stage main-${main} ${views.length === 1 ? "solo" : ""}`}>
-              {/* every view stays mounted; C or a click on a thumbnail changes which one is large */}
-              {broadcast && (
-                <figure className={`view ${place("tv")}`} onClick={() => setPicked("tv")}>
-                  <video ref={tv} src={`/broadcasts/${broadcast.split("/").pop()}`} muted autoPlay loop playsInline />
-                  <figcaption>{VIEW_NAME.tv}</figcaption>
-                </figure>
-              )}
-              <figure className={`view ${place("cam")}`} onClick={() => setPicked("cam")}>
+              {/* every view stays mounted; C or a click on the thumbnail changes which one is large */}
+              <figure className={`view ${place("cam")} ${rebuilt ? "broadcast" : ""}`} onClick={() => setPicked("cam")}>
                 <CameraFeed alt="Downward camera" />
                 {voting && <FootageHud s={s} verdict={verdict(s, log)} tone={tone} />}
                 <figcaption>{VIEW_NAME.cam}</figcaption>
               </figure>
-              <figure className={`view scene ${place("3d")}`} hidden={!voting} onClick={() => main !== "3d" && setPicked("3d")}>
+              <figure className={`view scene ${place("3d")}`} hidden={!views.includes("3d")} onClick={() => main !== "3d" && setPicked("3d")}>
                 <Scene3D s={s} />
                 <figcaption>{VIEW_NAME["3d"]}</figcaption>
               </figure>
-
-              {voting && main !== "3d" && (
-                // the software layer over the footage: one line, three numbers
-                <dl className="lower">
-                  <div className="k-truth"><dt>True altitude</dt><dd>{mm(s.truth)}<small> mm</small></dd></div>
-                  <div className={`k-legacy ${Math.abs(legacyErr ?? 0) > ERR_BAD_MM ? "bad" : ""}`}>
-                    <dt>Legacy gate</dt><dd>{mm(s.legacy.est)}<em>{signed(legacyErr)}</em></dd>
-                  </div>
-                  <div className={`k-so ${Math.abs(soErr ?? 0) > ERR_BAD_MM ? "bad" : ""}`}>
-                    <dt>Second Opinion</dt><dd>{mm(s.so.est)}<em>{signed(soErr)}</em></dd>
-                  </div>
-                </dl>
-              )}
-            </div>
-
-            <div className="story">
-              {clips.length > 1 && clip && (
-                <nav className="clips" aria-label="Footage">
-                  {clips.map((c) => (
-                    <button key={c.id} className={c.id === clip.id ? "on" : ""} onClick={() => cmd(`clip:${c.id}`)}>{c.name}</button>
-                  ))}
-                </nav>
-              )}
-              {voting ? (
-                <>
-                  <h2 className={tone}>{line}</h2>
-                  <p className="then">{consequence(legacyErr, soErr)}</p>
-                </>
-              ) : (
-                <>
-                  <h2 className="idle">Camera only. This footage has no altitude record, so there is nothing to vote on.</h2>
-                  <p className="then">The estimator tracks the real surface and reads time-to-contact from how fast it grows.</p>
-                </>
-              )}
-              {/* cues are instructions for whoever is working the physical rig */}
-              {sc?.cue && s.kind === "live" && <p className="cue">{sc.cue}</p>}
-              {sc && (
-                <p className="about">
-                  <b>{sc.name}</b> <span>{sc.mission}</span> {sc.summary}
-                </p>
-              )}
-              {clip && !sc && (
-                <p className="about">
-                  <b>{clip.name}</b> <span>{clip.mission}</span> {clip.note}
-                </p>
-              )}
-              {sc && main === "tv" && sc.broadcast_note ? <p className="credit">{sc.broadcast_note}</p>
-                : sc && clip ? (
-                  <p className="credit">
-                    Camera: real footage of {clip.name} landing on the Moon ({clip.credit}). This mission's sensor failure is
-                    injected into the stream; rangefinder and inertial come from NASA's altitude labels, 10 mm = 1 m.
-                  </p>
-                ) : sc?.site_note && <p className="credit">{sc.site_note}</p>}
-              {!sc && !clip && <p className="about">Press <b>1</b> to <b>{Math.max(scenarios.length, 1)}</b> to replay a real landing through both brains.</p>}
             </div>
           </section>
 
           {voting ? (
+            // the picture on the left, and beside it: what happened, in one sentence and three numbers
             <aside className="right">
-              <section className="how-high">
-                <h4>How high are we? <span>Everything that is not on the white line is wrong.</span></h4>
-                <Lanes s={s} />
-              </section>
-              <section className="brains">
-                <BrainCard title="Legacy gate" tone="legacy" b={s.legacy} truth={s.truth} score={s.score.legacy} />
-                <BrainCard title="Second Opinion" tone="so" b={s.so} truth={s.truth} score={s.score.so} />
-              </section>
-              <p className="flight">
-                {s.v > 1 ? `Descending at ${s.v.toFixed(0)} mm/s` : "Holding"}
-                {tau != null && <> · camera says {tau.toFixed(1)} s to contact</>}
-                {Math.abs(terrain) > 10 && <> · ground moved {signed(terrain)} mm since reset</>}
+              <p className="mission">
+                {sc ? <><b>{sc.name}</b> {sc.mission}</> : clip ? <><b>{clip.name}</b> {clip.mission}</>
+                  : <>Press <b>1</b> to <b>{Math.max(scenarios.length, 1)}</b> to replay a landing through both brains.</>}
               </p>
-              <section className="evidence">
-                <div>
-                  <h4>The vote <span>how strongly each pair disagrees</span></h4>
-                  <VoteTriangle so={s.so} reanchored={reanchored} />
+              <h2 className={tone}>{line}</h2>
+              <p className="then">{consequence(legacyErr, soErr)}</p>
+              {/* cues are instructions for whoever is working the physical rig */}
+              {sc?.cue && s.kind === "live" && <p className="cue">{sc.cue}</p>}
+
+              <dl className="three">
+                <div className="k-truth">
+                  <dt>True altitude</dt>
+                  <dd>{mm(s.truth)}<small> {unit()}</small></dd>
                 </div>
-                <div>
-                  <h4>Last 20 seconds <span>mm</span></h4>
-                  <AltitudePlot history={history} tick={s.t} />
+                <div className={`k-legacy ${Math.abs(legacyErr ?? 0) > ERR_BAD_MM ? "bad" : ""}`}>
+                  <dt>Legacy gate <span>{plainStatus(s.legacy.status, "legacy")}</span></dt>
+                  <dd>{mm(s.legacy.est)}<em>{signed(legacyErr)}</em></dd>
                 </div>
-              </section>
+                <div className={`k-so ${Math.abs(soErr ?? 0) > ERR_BAD_MM ? "bad" : ""}`}>
+                  <dt>Second Opinion <span>{plainStatus(s.so.status, "so")}</span></dt>
+                  <dd>{mm(s.so.est)}<em>{signed(soErr)}</em></dd>
+                </div>
+              </dl>
+
+              <p className="credit">
+                {rebuilt ? clip.note
+                  : clip ? <>Camera: real footage of {clip.name} landing on the Moon ({clip.credit}). Rangefinder and inertial come from NASA's on-screen altitude labels.{s.faults.length > 0 && " This mission's sensor failure is injected."}</>
+                  : sc?.site_note}
+                {" "}Press <b>M</b> for the math.
+              </p>
             </aside>
           ) : (
             <aside className="right tracking">
@@ -265,7 +198,7 @@ export default function App() {
         </main>
       )}
 
-      <ScenarioPanel s={s} scenarios={scenarios} voiceOn={voiceOn} onVoice={toggleVoice} />
+      <ScenarioPanel s={s} scenarios={scenarios} voiceOn={voiceOn} onVoice={toggleVoice} proof={proof} onProof={() => setProof((p) => !p)} />
     </div>
   );
 }

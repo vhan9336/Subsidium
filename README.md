@@ -23,7 +23,7 @@ The sensor readings in a replay are a scaled reconstruction of the published fai
 ## Real landing footage
 ```bash
 python tools/fetch_data.py footage maps texture     # NASA videos, LRO maps, moon ground texture
-python -m so serve --video                          # real Moon landing footage as the camera; replays that need a moving ground fall back to the simulator
+python -m so serve --video                          # real footage: HAKUTO-R and Resilience on their own broadcasts and on-screen telemetry, the rest on Blue Ghost. M opens the proof screen
 ```
 Blue Ghost Mission 1 carries NASA's on-screen altitude labels, so all three witnesses run and faults can be
 injected on real Moon footage. Perseverance and DART have no usable altitude record and are tracking-only.

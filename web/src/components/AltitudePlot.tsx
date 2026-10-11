@@ -1,7 +1,7 @@
 // Last 20 s of every altitude source and both beliefs. Plain canvas, no chart library.
 import { useEffect, useRef, type MutableRefObject } from "react";
 import { HISTORY_S } from "../telemetry";
-import { C, DISPLAY, EVENT_LABEL } from "../theme";
+import { C, DISPLAY, EVENT_LABEL, mm, niceStep } from "../theme";
 import type { State } from "../types";
 
 type Series = {
@@ -60,7 +60,7 @@ function draw(cv: HTMLCanvasElement, h: State[], range: { lo: number; hi: number
   // grid
   g.font = `13px ${DISPLAY}`;
   g.textBaseline = "middle";
-  const step = range.hi - range.lo > 320 ? 100 : 50;
+  const step = niceStep(range.hi - range.lo);
   for (let v = Math.ceil(range.lo / step) * step; v <= range.hi; v += step) {
     g.strokeStyle = C.line;
     g.lineWidth = 1;
@@ -70,7 +70,7 @@ function draw(cv: HTMLCanvasElement, h: State[], range: { lo: number; hi: number
     g.stroke();
     g.fillStyle = C.dim;
     g.textAlign = "right";
-    g.fillText(`${v}`, PAD.l - 8, y(v));
+    g.fillText(mm(v), PAD.l - 8, y(v));
   }
   g.textAlign = "center";
   g.fillStyle = C.dim;

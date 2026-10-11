@@ -1,5 +1,5 @@
 // The vote, readable on its own: three witnesses, three pair tests, who got outvoted.
-import { mm } from "../theme";
+import { mm, unit } from "../theme";
 import type { SecondOpinion } from "../types";
 
 type Key = "nav" | "rf" | "cam";
@@ -63,7 +63,7 @@ export default function VoteTriangle({ so, reanchored }: { so: SecondOpinion; re
           ? w ? "EXCLUDED" : "SILENT"
           : abstain ? "ABSTAINING"
           : k === "nav" && reanchored ? "RE-ANCHORED"
-          : w ? `±${w.sigma.toFixed(0)} mm` : "";
+          : w ? `±${mm(w.sigma)} ${unit()}` : "";
         return (
           <g key={k} className={`node ${k} ${out ? "out" : ""} ${abstain ? "abstain" : ""} ${k === "nav" && reanchored ? "flash" : ""}`}>
             <circle cx={n.x} cy={n.y} r={R} />

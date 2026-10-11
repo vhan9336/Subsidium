@@ -9,6 +9,7 @@
                     scenario:<id|stop> | record_start | record_stop | clip:<id>
   GET  /scenarios   mission replay list
   GET  /clips       real-footage clips (only with `serve --video`)
+  GET  /proof       tuned constants + headless scorecard for the proof screen
 """
 from __future__ import annotations
 
@@ -69,12 +70,37 @@ def create_app(pipe: Pipeline, loop_replay: bool = False) -> FastAPI:
     def scenarios():
         both = hasattr(pipe.src, "use")           # footage + simulator: say which one each replay flies on
         return [{**{k: s.get(k) for k in ("id", "name", "mission", "summary", "setup", "expect", "source")},
-                 "footage": s.get("footage", True) if both else pipe.src.kind == "video"}
+                 "footage": s.get("footage", True) if both else pipe.src.kind == "video",
+                 "clip": s.get("clip") if both and s.get("clip") in pipe.src.video.clips else None}
                 for s in pipe.scenarios.values()]
 
     @app.get("/clips")
     def clips():
         return pipe.src.catalog() if hasattr(pipe.src, "catalog") else []
+
+    card = {"rows": None, "busy": False}
+
+    def score():
+        from .check import EXPECT, run_one
+        rows = []
+        for sid, want in EXPECT.items():
+            st, events = run_one(pipe.cfg, pipe.src.mm_per_step, sid)
+            sc, names = st["score"], {e for _, e in events}
+            rows.append({"id": sid, "legacy_max": sc["legacy"]["max"], "legacy_last": sc["legacy"]["last"] or 0.0,
+                         "so_max": sc["so"]["max"], "so_last": sc["so"]["last"] or 0.0,
+                         "ok": want <= names and abs(sc["so"]["last"] or 0) < 12, "events": sorted(names)})
+        card["rows"] = rows
+
+    @app.get("/proof")
+    def proof():
+        """The tuned constants and the headless scorecard (`python -m so check`), for the proof screen."""
+        if card["rows"] is None and not card["busy"]:
+            card["busy"] = True
+            threading.Thread(target=score, daemon=True).start()
+        c = pipe.cfg
+        return {"config": {**{k: c[k] for k in ("sensors", "monitor", "legacy", "faults")},
+                           "camera": {k: c["camera"][k] for k in ("lookback_s", "min_quality")}},
+                "scorecard": card["rows"]}
 
     @app.post("/cmd/{name}")
     def cmd(name: str):

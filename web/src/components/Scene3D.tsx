@@ -8,7 +8,7 @@ import { Edges, Html, OrbitControls } from "@react-three/drei";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { Component, useEffect, useMemo, useRef, type ReactNode } from "react";
 import * as THREE from "three";
-import { C, ERR_BAD_MM, mm, signed } from "../theme";
+import { C, ERR_BAD_MM, mm, signed, unit } from "../theme";
 import type { State } from "../types";
 
 const U = 0.01; // scene units per mm
@@ -356,7 +356,7 @@ function Rig({ s }: { s: State }) {
       {/* true lander */}
       <group ref={lander}>
         <Lander />
-        <Tag className="tag-lander tag-truth">TRUE {mm(truth)} mm</Tag>
+        <Tag className="tag-lander tag-truth">TRUE {mm(truth)} {unit()}</Tag>
       </group>
 
       {/* rangefinder beam: its length is the reading, so a wrong reading ends above or below the ground */}
@@ -397,11 +397,11 @@ function Rig({ s }: { s: State }) {
       {/* what each brain believes */}
       <group ref={legacy} scale={1.16}>
         <Lander ghost={C.legacy} />
-        <Tag className={`tag-lander tag-legacy ${tone(err(s.legacy.est))}`}>LEGACY {signed(err(s.legacy.est))} mm</Tag>
+        <Tag className={`tag-lander tag-legacy ${tone(err(s.legacy.est))}`}>LEGACY {signed(err(s.legacy.est))} {unit()}</Tag>
       </group>
       <group ref={so} scale={1.08}>
         <Lander ghost={C.so} />
-        <Tag className={`tag-lander tag-so ${tone(err(s.so.est))}`}>SECOND OPINION {signed(err(s.so.est))} mm</Tag>
+        <Tag className={`tag-lander tag-so ${tone(err(s.so.est))}`}>SECOND OPINION {signed(err(s.so.est))} {unit()}</Tag>
       </group>
       <mesh ref={band}>
         <cylinderGeometry args={[0.78, 0.78, 1, 40, 1, true]} />
