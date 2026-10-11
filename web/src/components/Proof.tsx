@@ -199,7 +199,7 @@ export default function Proof({ s, history, reanchored }: { s: State; history: M
       </section>
 
       <section className="wide">
-        <h4>8. The hazard grid <span>the picture split into tiles, each tile's height above the ground</span></h4>
+        <h4>8. The hazard grid <span>the picture split into tiles, each compared with the ground</span></h4>
         <HazardTable s={s} />
       </section>
 
@@ -246,7 +246,7 @@ function HazardTable({ s }: { s: State }) {
         </tbody>
       </table>
       <p className="fine">
-        Percent of altitude above the ground plane. Green is level, red sticks up or dips by 8% or more, a dot means no data.
+        Each tile's height compared with the main ground plane, as a percent of altitude. Green means about the same height. Red means 8% or more higher or lower. A dot means no data.
         The ringed tile is the safest place to land{s.hazard_shown ? "" : ". This footage is too oblique for the grid to be drawn on the picture"}.
       </p>
     </>

@@ -64,6 +64,12 @@ class Pipeline:
             self.faults.set(name[6:], t)
         elif name.startswith("scenario:"):
             self.start_scenario(name[9:], t)
+        elif name.startswith("live:"):
+            if self.src.has_rig:                    # switching between the live rig and the simulator
+                self.src.command(name)
+                self.apply("reset", t, record=False)
+                self.runner.stop()
+                self.faults.clear()
         elif name.startswith("clip:"):
             # picking footage by hand ends any replay that was flying and clears its injected faults
             self.runner.stop()
@@ -171,7 +177,7 @@ class Pipeline:
             "so": {"est": so.est, "sigma": so.sigma, "status": so.status, "excluded": so.excluded,
                    **{k: so.detail[k] for k in ("pairs", "gate", "cam_abstain", "witness")}},
             "hazard": None if res.hazard is None else np.nan_to_num(res.hazard, nan=-1).round(3).tolist(),
-            "site": res.site, "hazard_shown": self.src.show_hazard, "faults": self.faults.active, "scenario": self.runner.state(t),
+            "site": res.site, "hazard_shown": self.src.show_hazard, "rig": self.src.has_rig, "faults": self.faults.active, "scenario": self.runner.state(t),
             "events": legacy.events + so.events, "score": self.score,
         }
         if self.log:

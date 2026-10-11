@@ -25,7 +25,7 @@ export default function FootageHud({ s, verdict, tone }: { s: State; verdict: st
     <div className={`hud ${rebuilt ? "broadcast" : ""}`}>
       {clip && <i className="hud-progress" style={{ transform: `scaleX(${Math.min(clip.pos / clip.dur, 1)})` }} />}
       <div className="hud-source">
-        <b>{rebuilt ? "The real broadcast" : clip ? "Real footage" : "Simulated camera"}</b>
+        <b>{rebuilt ? "The real broadcast" : clip ? "Real footage" : s.kind === "live" ? "Live webcam" : "Simulated camera"}</b>
         {!rebuilt && (
           <p className={locked ? "lock" : ""}>
             {locked ? "Camera locked on the surface" : camOut ? "Camera outvoted" : "Camera has no lock yet"}
@@ -36,8 +36,8 @@ export default function FootageHud({ s, verdict, tone }: { s: State; verdict: st
       <p className={`hud-verdict ${tone}`}>{verdict}</p>
 
       {s.hazard_shown && s.hazard && (
-        <p className="hud-legend" title="The camera's picture is split into tiles. Each tile's height above the ground is worked out from how fast it grows as the lander descends.">
-          <i /> level ground <b>to</b> sticks up <span>◎ safest spot to land</span>
+        <p className="hud-legend" title="The picture is split into tiles. Each tile's height compared with the ground around it is worked out from how fast it grows as the lander descends. Green: about the same height. Red: noticeably higher or lower.">
+          <i /> same height as the ground <b>to</b> differs from it <span>◎ safest spot to land</span>
         </p>
       )}
 

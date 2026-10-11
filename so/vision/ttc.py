@@ -56,6 +56,8 @@ class TTCEstimator:
 
     def update(self, t: float, frame: np.ndarray) -> TTCResult:
         g = self._prep(frame)
+        if self.buf and self.buf[-1][1].shape != g.shape:
+            self.reset()                       # a different source (say simulator to video): the old frames can't be compared
         self.buf.append((t, g))
         # pick the newest buffered frame that is at least lookback_s old
         old = None
@@ -136,7 +138,7 @@ class TTCEstimator:
                 if m.sum() >= 4:
                     st = float(np.percentile(ratio[m], 85))  # a boulder rarely fills a whole tile
                     if st > 1.0:
-                        haz[i, j] = 1.0 - (s_global - 1.0) / (st - 1.0)  # >0 = sticks up
+                        haz[i, j] = 1.0 - (s_global - 1.0) / (st - 1.0)  # > 0: closer to the camera than the ground
         if self.hazard_avg is None or self.hazard_avg.shape != haz.shape:
             self.hazard_avg = haz
         else:  # temporal smoothing that tolerates missing tiles

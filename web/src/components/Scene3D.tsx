@@ -90,7 +90,17 @@ function useShapes() {
     const ticks = [new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 4.6, 0)];
     for (let y = 0; y <= 4.5; y += 0.5) ticks.push(new THREE.Vector3(y % 1 ? -0.1 : -0.2, y, 0), new THREE.Vector3(y % 1 ? 0.1 : 0.2, y, 0));
 
-    return { frustumLines, frustumFaces, beam, beamDash, ruler: new THREE.BufferGeometry().setFromPoints(ticks) };
+    // a thin sky of stars on a big sphere (the Moon has no atmosphere to hide them)
+    const stars = new Float32Array(900 * 3);
+    for (let i = 0; i < 900; i++) {
+      const a = Math.random() * Math.PI * 2;
+      const y = 0.05 + Math.random() * 0.95;
+      const r = Math.sqrt(1 - y * y);
+      stars.set([70 * r * Math.cos(a), 70 * y, 70 * r * Math.sin(a)], i * 3);
+    }
+    const starGeo = new THREE.BufferGeometry();
+    starGeo.setAttribute("position", new THREE.BufferAttribute(stars, 3));
+    return { frustumLines, frustumFaces, beam, beamDash, starGeo, ruler: new THREE.BufferGeometry().setFromPoints(ticks) };
   }, []);
 }
 
@@ -110,6 +120,49 @@ function useGround(url: string) {
   }, [url]);
   return tex;
 }
+
+/**
+ * The camera's hazard grid as a small texture: one coloured square per tile, green where the tile is
+ * about the same height as the ground and red where it differs by 8% of the altitude or more, with
+ * the safest tile outlined. It's laid on the ground inside the camera's footprint.
+ */
+function useHazardTexture(hazard: number[][] | null, site: [number, number] | null) {
+  const canvas = useMemo(() => {
+    const c = document.createElement("canvas");
+    c.width = c.height = 192;
+    return c;
+  }, []);
+  const texture = useMemo(() => {
+    const t = new THREE.CanvasTexture(canvas);
+    t.minFilter = t.magFilter = THREE.NearestFilter;
+    return t;
+  }, [canvas]);
+  useEffect(() => {
+    if (!hazard) return;
+    const g = canvas.getContext("2d")!;
+    const n = hazard.length;
+    const cell = canvas.width / n;
+    g.clearRect(0, 0, canvas.width, canvas.height);
+    hazard.forEach((row, i) =>
+      row.forEach((v, j) => {
+        if (v <= -0.99) return; // the engine sends -1 for a tile with no data
+        g.fillStyle = `hsla(${120 * (1 - Math.min(Math.abs(v) / 0.08, 1))}, 75%, 45%, 0.85)`;
+        g.fillRect(j * cell + 1, i * cell + 1, cell - 2, cell - 2);
+      }),
+    );
+    if (site) {
+      g.strokeStyle = "#fff";
+      g.lineWidth = 5;
+      g.strokeRect(site[1] * cell + 4, site[0] * cell + 4, cell - 8, cell - 8);
+    }
+    texture.needsUpdate = true;
+  }, [hazard, site, canvas, texture]);
+  return texture;
+}
+
+// The simulator's boulders: lateral position as a fraction of 200 mm, radius and height in mm.
+// These match SimScene in so/sources/sim.py, so the 3D view shows what the camera sees.
+const BOULDERS = [[0.25, -0.15, 22, 30], [-0.35, 0.25, 18, 22]] as const;
 
 // the values the scene eases toward each frame
 type Smooth = { y: number; legacy: number; so: number; sigma: number; rf: number; nav: number; rfw: number; cam: number };
@@ -139,6 +192,7 @@ function Rig({ s }: { s: State }) {
   const shapes = useShapes();
   const site = s.scenario?.site ? `/sites/${s.scenario.site.split("/").pop()}` : "/textures/lro_moon.jpg";
   const groundTex = useGround(site);
+  const hazardTex = useHazardTexture(s.hazard, s.site);
   const live = useRef(s);
   live.current = s;
   const eased = useRef<Smooth | null>(null);
@@ -214,8 +268,20 @@ function Rig({ s }: { s: State }) {
       <mesh rotation-x={-Math.PI / 2} receiveShadow>
         <planeGeometry args={[GROUND, GROUND]} />
         {/* the key makes three.js rebuild the material once the texture arrives */}
-        <meshStandardMaterial key={groundTex?.uuid} map={groundTex} color={groundTex ? "#fff" : "#77777b"} roughness={1} />
+        <meshStandardMaterial key={groundTex?.uuid} map={groundTex} bumpMap={groundTex} bumpScale={1.5} color={groundTex ? "#fff" : "#77777b"} roughness={1} />
       </mesh>
+
+      {/* the simulator's boulders, where the camera sees them */}
+      {s.kind === "sim" && BOULDERS.map(([bx, bz, radius, height]) => (
+        <mesh key={bx} position={[bx * 200 * U, height * U * 0.4, bz * 200 * U]} scale={[radius * U, height * U * 0.6, radius * U]} castShadow receiveShadow>
+          <dodecahedronGeometry args={[1, 1]} />
+          <meshStandardMaterial color="#8b8b90" roughness={1} flatShading />
+        </mesh>
+      ))}
+
+      <points geometry={shapes.starGeo}>
+        <pointsMaterial color="#cfd6e4" size={0.28} transparent opacity={0.8} fog={false} />
+      </points>
 
       {/* a ruler on the ground with one marker per witness, so you can read the votes off it */}
       <group position={[-1.25, 0, 1.25]}>
@@ -263,6 +329,13 @@ function Rig({ s }: { s: State }) {
             ? <lineDashedMaterial color={C.dim} dashSize={0.04} gapSize={0.035} />
             : <lineBasicMaterial color={camColor} transparent opacity={camOff ? 0.6 : 0.9} />}
         </lineSegments>
+        {/* the hazard grid, lying on the ground inside the camera's footprint (the frustum is one unit tall) */}
+        {s.hazard && (
+          <mesh position={[0, -1, 0]} rotation-x={-Math.PI / 2} renderOrder={3}>
+            <planeGeometry args={[2 * FOV_W, 2 * FOV_D]} />
+            <meshBasicMaterial map={hazardTex} transparent opacity={0.8} depthWrite={false} side={THREE.DoubleSide} />
+          </mesh>
+        )}
         <mesh geometry={shapes.frustumFaces}>
           <meshBasicMaterial color={camColor} transparent opacity={camOff ? 0.025 : 0.07} side={THREE.DoubleSide} depthWrite={false} />
         </mesh>

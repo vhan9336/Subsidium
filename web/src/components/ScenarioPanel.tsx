@@ -9,6 +9,7 @@ const MOTION: [string, string, string][] = [
   ["R", "Reset", "reset"],
   ["T", "Plateau in", "terrain_up"],   // slides the 60 mm plateau under the lander
   ["Y", "Plateau out", "terrain_down"], // and takes it away again
+  ["X", "Engine cut", "cut"],           // the live rig drops to the bottom at once
 ];
 const FAULTS: [string, string][] = [
   ["rf_lag", "Rangefinder lag"],
@@ -71,9 +72,10 @@ export default function ScenarioPanel({ s, scenarios, clips, voiceOn, onVoice, p
         <button className="math" onClick={onExplain}>Presentation <i>E</i></button>
         <button className={`math ${proof ? "on" : ""}`} onClick={onProof}>{proof ? "Back to the landing" : "The math"} <i>M</i></button>
       </span>
-      {proof && <div className="manual">
+      {/* the hand controls live on the math screen, and stay on the main screen while the rig is live */}
+      {(proof || s?.kind === "live") && <div className="manual">
         <span className="label">Fly by hand</span>
-        {MOTION.map(([key, name, c]) => (
+        {MOTION.filter(([, , c]) => c !== "cut" || s?.kind === "live").map(([key, name, c]) => (
           <button key={c} className={c === "descend" && s?.descending ? "on" : ""} onClick={() => cmd(c)}>
             {name} <i>{key}</i>
           </button>

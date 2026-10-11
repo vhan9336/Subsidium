@@ -29,6 +29,7 @@ class Source:
     tau_gain = 1.0                # multiplies time to contact (a tilted camera reads long)
     show_hazard = True            # the hazard grid assumes a camera looking straight down
     reconstructed_cam = False     # no descent camera in the video, so the camera reading is faked
+    has_rig = False               # whether the live rig can be switched to (see HybridSource)
 
     def read(self) -> Sample | None:
         raise NotImplementedError

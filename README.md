@@ -34,6 +34,7 @@ The number keys run the replays: Nominal, then the four crashes (HAKUTO-R M1, Re
 | D, S, U, R | Descend, stop, up, reset |
 | T, Y | Slide the 60 mm plateau in or out under the lander |
 | 0 | Clear injected sensor faults |
+| J | Switch to the live rig, when the engine is started with `--rig` |
 
 ## The real crashes in the replays
 
@@ -68,12 +69,35 @@ python eval/run_video.py --selftest
 
 For work on the dashboard with hot reload, run `python -m so serve --sim` and `cd web && npm run dev` together, then open http://localhost:5173.
 
-## The rig
+## The live rig demonstration
 
-A webcam and an ultrasonic sensor hang from a stepper winch over a textured floor, and a box slides under it to make the plateau. The firmware is in `firmware/rig/rig.ino` and has not been run on hardware yet.
+A servo winch lowers a sled over a textured floor. An ultrasonic sensor stands in for the laser rangefinder, the servo angle stands in for the inertial unit, and a webcam looking down gives the camera. The Arduino sketch is `firmware/rig/rig.ino`.
 
 ```bash
-python -m so serve --port COM3          # or /dev/tty.usbmodem101
+python -m so serve --video --rig auto                 # --rig takes a port too, like COM3 or /dev/ttyACM0
+python -m so serve --video --rig auto --cam 1         # if the laptop's own camera is number 0
+```
+
+Press **J** to switch to the rig, and J again to come back. While it's live:
+
+| Key | Does |
+|---|---|
+| D | Demo descent: the sled creeps down and stops when the sensor says the legs are on the ground |
+| U or R | Back to the top. R also zeros the starting altitude from the sensor |
+| S | Stop where it is |
+| X | Engine cut: the servo drops to the bottom at once (the crash drop) |
+| 4 to 7 | Run a replay script on the rig. The plateau steps show up as a big amber cue for whoever works the box |
+| T, Y | These do nothing on the rig. Slide the box by hand when the cue says so |
+
+The fault buttons (rangefinder lag, freeze, silent, camera bias, camera blind) corrupt the live readings in software, so you can break a real sensor on cue. The altitude each brain is scored against is the raw ultrasonic reading.
+
+Set `rig.mm_per_tenth` in `config.toml` to the millimetres of sled travel per tenth of a degree. The sketch assumes about 1 mm per degree, which is 0.1.
+
+To try the whole thing with nothing plugged in, run the pretend Arduino and point a video file at it as the webcam:
+
+```bash
+python tools/fake_rig.py                              # prints a port, like /dev/pts/4
+python -m so serve --video --rig /dev/pts/4 --cam footage/blue_ghost_m1_landing_scalpss.mp4
 ```
 
 ## Where things are

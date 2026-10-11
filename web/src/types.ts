@@ -69,6 +69,7 @@ export type State = {
   so: Subsidium;
   hazard: number[][] | null;
   site: [number, number] | null; // the safest tile of the hazard grid, as [row, column]
+  rig: boolean; // whether a live rig is attached, so J can switch to it
   hazard_shown: boolean; // whether the grid is drawn over this camera image
   faults: string[];
   scenario: ScenarioState | null;

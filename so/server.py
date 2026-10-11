@@ -6,7 +6,7 @@
   GET  /video         the same frames as an MJPEG stream
   POST /cmd/{name}    descend | stop | up | reset | terrain_up | terrain_down | fault:<name or clear> |
                       scenario:<id or stop> | record_start | record_stop | clip:<id> |
-                      pause | resume | restart | seek:<n>   (playback: seek scrubs back through the last minute)
+                      live:<on|off|toggle> | pause | resume | restart | seek:<n>   (playback: seek scrubs back through the last minute)
   GET  /scenarios     the mission replays
   GET  /clips         real-footage clips (only with `serve --video`)
   GET  /proof         the tuned settings and a scorecard of every replay, for the math screen
@@ -19,6 +19,7 @@ import datetime
 import json
 import threading
 import time
+import traceback
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse, PlainTextResponse, Response, StreamingResponse
@@ -45,7 +46,12 @@ def create_app(pipe: Pipeline) -> FastAPI:
             if shared["paused"]:
                 time.sleep(0.05)
                 continue
-            st = pipe.tick()
+            try:
+                st = pipe.tick()
+            except Exception:                    # one bad frame shouldn't stop the engine for good
+                traceback.print_exc()
+                time.sleep(0.2)
+                continue
             if st is None:                       # a replay ended, or the camera hiccuped
                 time.sleep(0.05)
                 continue
@@ -141,7 +147,7 @@ def create_app(pipe: Pipeline) -> FastAPI:
     def cmd(name: str):
         if name in ("pause", "resume", "restart") or name.startswith("seek:"):
             playback(name)
-        elif name == "reset" or name.startswith(("scenario:", "clip:")):
+        elif name == "reset" or name.startswith(("scenario:", "clip:", "live:")):
             with lock:                       # a new run starts the playback clock from zero, and un-pauses
                 history.clear()
                 shared["cursor"] = None

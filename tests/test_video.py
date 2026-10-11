@@ -62,7 +62,8 @@ def test_frozen_rangefinder_is_outvoted_on_real_footage():
 
 
 def test_replay_flies_on_real_footage_when_it_can():
-    states = run_replay("athena_im2")
+    # Athena has no footage of its own and flies the simulator by default, so ask for the footage
+    states = run_replay("athena_im2", footage=True)
     assert {s["kind"] for s in states} == {"video"}
     # the injected camera bias is too small for the real, noisy camera to be voted out,
     # but the estimate has to stay on the true altitude regardless
@@ -77,6 +78,7 @@ def test_replay_marked_not_for_footage_flies_on_the_simulator():
 
 def test_replay_runs_again_when_the_footage_loops():
     pipe = hybrid_pipeline()
+    pipe.scenarios["odysseus_im1"] = {**pipe.scenarios["odysseus_im1"], "footage": True}   # force it onto the clip
     pipe.command("scenario:odysseus_im1")
     st, last = pipe.tick(), -1.0
     while st["t"] >= last:                         # until the clip loops

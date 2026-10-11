@@ -305,3 +305,5 @@ h4 span { margin-left: 10px; font-weight: 400; font-size: 13px; color: var(--dim
 .canva-setup input:focus { outline: 2px solid var(--cam); outline-offset: 2px; }
 .canva-setup button { justify-self: start; padding: 8px 18px; font: 600 16px var(--display); color: #06140b; background: var(--so); }
 .canva-setup .bad { color: var(--legacy); }
+
+.bar .notice { color: var(--rf); font-weight: 600; }

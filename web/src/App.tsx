@@ -20,7 +20,7 @@ const SOURCE = { sim: "Simulator", live: "Live rig", replay: "Recorded run", vid
 
 // keys that send a command straight to the engine
 const KEYS: Record<string, string> = {
-  d: "descend", s: "stop", u: "up", r: "reset", t: "terrain_up", y: "terrain_down", "0": "fault:clear",
+  d: "descend", s: "stop", u: "up", x: "cut", r: "reset", t: "terrain_up", y: "terrain_down", "0": "fault:clear",
 };
 
 /** What's going on right now in one sentence, read from the live state and not from old events. */
@@ -83,6 +83,7 @@ export default function App() {
   const [picked, setPicked] = useState<View | null>(null); // the view the user chose to enlarge
   const [proof, setProof] = useState(false);
   const [explain, setExplain] = useState(false);
+  const [notice, setNotice] = useState(""); // a short message in the top bar, like "No rig connected"
   const { state: s, connected, history } = useTelemetry((key, st) => {
     voice.say(key);
     if (EVENT_LABEL[key]) setLog((l) => [...l.filter((e) => e.t <= st.t).slice(-8), { key, t: st.t }]);
@@ -99,30 +100,43 @@ export default function App() {
   const voting = !clip || clip.truth; // a clip with no altitude record is tracking only
   const sc = s?.scenario ?? null;
 
-  // Real footage is one picture with the software layer over it. The simulator and the rig lead
-  // with the 3D view and keep the camera as a thumbnail.
-  const views: View[] = s?.kind === "video" ? ["cam"] : ["3d", "cam"];
+  // Real footage leads with the picture and its software layer, with the 3D view beside it as a
+  // thumbnail. The simulator and the rig lead with the 3D view and keep the camera as the thumbnail.
+  const views: View[] = s?.kind === "video" || s?.kind === "live" ? ["cam", "3d"] : ["3d", "cam"];
   const main: View = picked && views.includes(picked) ? picked : views[0];
   const place = (v: View) => (v === main ? "is-main" : "is-thumb");
   const swapViews = () => setPicked(views[(views.indexOf(main) + 1) % views.length]);
+
+  useEffect(() => {
+    if (!notice) return;
+    const timer = setTimeout(() => setNotice(""), 5000);
+    return () => clearTimeout(timer);
+  }, [notice]);
 
   useEffect(() => setLog([]), [sc?.id]); // a new replay starts with a clean history
   useEffect(() => setPicked(null), [s?.kind]); // footage and simulator each lead with their own view
 
   // The key handler is set up once, so it reads the latest values through this ref.
   const items = playlist(scenarios, clips);
-  const latest = useRef({ items, swapViews, playback: s?.playback });
-  latest.current = { items, swapViews, playback: s?.playback };
+  const latest = useRef({ items, swapViews, playback: s?.playback, rig: s?.rig, live: s?.kind === "live" });
+  latest.current = { items, swapViews, playback: s?.playback, rig: s?.rig, live: s?.kind === "live" };
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.ctrlKey || e.metaKey || e.altKey || e.repeat) return;
       if ((e.target as HTMLElement).closest?.("input, textarea")) return; // typing in a box isn't a shortcut
       const k = e.key.toLowerCase();
-      const { items, swapViews, playback } = latest.current;
+      const { items, swapViews, playback, rig, live } = latest.current;
       if (k === "v") setVoiceOn(voice.toggle());
       else if (k === " " && playback) cmd(playback.paused ? "resume" : "pause");
       else if ((k === "arrowleft" || k === "arrowright") && playback) cmd(stepCommand(playback, k === "arrowleft" ? -1 : 1));
-      else if (k === "e") {
+      else if (k === "j") {
+        // the live demonstration with the real rig: J goes there, and J again comes back
+        if (!rig) setNotice("No rig attached. Start the engine with: python -m so serve --video --rig auto");
+        else {
+          setProof(false);
+          cmd(live ? "live:off" : "live:on");
+        }
+      } else if (k === "e") {
         e.preventDefault(); // or the box that opens would receive this keystroke
         setExplain((open) => !open);
       }
@@ -152,6 +166,7 @@ export default function App() {
         <h1>Subsidium</h1>
         <p>Three sensors report altitude. The odd one out is outvoted.</p>
         <div className="bar-right">
+          {notice && <span className="notice">{notice}</span>}
           {s?.faults.map((f) => <span key={f} className="fault">Injected fault: {f.replace("_", " ")}</span>)}
           <span className={`source ${connected ? "" : "down"}`}>{connected ? SOURCE[s?.kind ?? "sim"] : "Engine offline"}</span>
         </div>
@@ -180,7 +195,7 @@ export default function App() {
             <aside className="right">
               <p className="mission">
                 {sc ? <><b>{sc.name}</b> {sc.mission}</> : clip ? <><b>{clip.name}</b> {clip.mission}</>
-                  : <>Press <b>1</b> to <b>{Math.max(items.length, 1)}</b> to replay a landing through both brains. Press <b>E</b> for the presentation.</>}
+                  : <>Press <b>1</b> to <b>{Math.max(items.length, 1)}</b> to replay a landing through both brains. Press <b>E</b> for the presentation{s.rig && <>, <b>J</b> for the live rig</>}.</>}
               </p>
               <h2 className={tone}>{line}</h2>
               <p className="then">{consequence(legacyErr, soErr)}</p>

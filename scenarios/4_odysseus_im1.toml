@@ -10,6 +10,9 @@ site_note = "Ground: NASA LRO image M1463440322L of the actual landing site with
 broadcast = "footage/broadcasts/odysseus_im1.mp4"
 broadcast_at = 120
 broadcast_note = "NASA's official broadcast of the IM-1 landing, 22 February 2024: mission control and the landing simulation in the minutes before touchdown. Credit NASA / Intuitive Machines."
+# There is no public descent video for this mission, so it flies the simulator over the NASA LRO photo
+# of the real site (site, above) and does not borrow another mission's footage.
+footage = false
 steps = [
   { at = 0.0, do = ["fault:clear", "terrain_down", "reset"] },
   { at = 0.2, do = ["fault:rf_drop"], cue = "Rangefinder never armed" },
