@@ -1,14 +1,14 @@
-"""Download the open footage and datasets this project uses.
+"""Downloads the open footage and maps this project uses.
 
-  python tools/fetch_data.py --list            what is available and what is already on disk
-  python tools/fetch_data.py footage           everything in a group (footage | maps)
+  python tools/fetch_data.py --list            what there is, and what's already on disk
+  python tools/fetch_data.py footage           a whole group (footage or maps)
   python tools/fetch_data.py blue_ghost dart   specific items
-  python tools/fetch_data.py texture           build the moon ground texture from the LRO map
-  python tools/fetch_data.py sites             LRO images of the four actual crash sites (for the replays)
-  python tools/fetch_data.py broadcasts        landing minutes of each mission's own broadcast
+  python tools/fetch_data.py texture           cut the moon ground texture out of the LRO map
+  python tools/fetch_data.py sites             LRO photos of the four real crash sites (for the replays)
+  python tools/fetch_data.py broadcasts        the landing minutes of each mission's own broadcast
 
-Everything here is NASA media or data, free to use with credit (see data/CATALOG.md).
-Files go to footage/ and data/, both git-ignored. Downloads resume if interrupted.
+NASA media and data are free to use with credit (see data/CATALOG.md). Files go to footage/
+and data/, both git-ignored. A download that gets interrupted resumes where it stopped.
 """
 from __future__ import annotations
 
@@ -20,7 +20,6 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 NASA_VIDEO = "https://images-assets.nasa.gov/video/"
 PERSEVERANCE = ("JPL-20210222-M2020f-0001-Perseverance%20Rover%E2%80%99s%20Descent%20and%20Touchdown%20on%20Mars/"
                 "JPL-20210222-M2020f-0001-Perseverance%20Rover%E2%80%99s%20Descent%20and%20Touchdown%20on%20Mars")
-APOLLO11 = "KSC-19690716-MH-NAS01-0001-The_Flight_of_Apollo_11_The_Eagle_Has_Landed_HS_from_Film_JSC-DVC_1928"
 MOON_KIT = "https://svs.gsfc.nasa.gov/vis/a000000/a004700/a004720/"
 
 # id: (group, destination, MB, url, what it is for)
@@ -34,19 +33,8 @@ ITEMS = {
     "dart": ("footage", "footage/dart_impact_replay.mp4", 23,
              "https://svs.gsfc.nasa.gov/vis/a030000/a031100/a031194/dart_impact_replay_1080p25.mp4",
              "DART's DRACO camera approaching Dimorphos until impact"),
-    "perseverance_4k": ("footage-large", "footage/perseverance_descent_touchdown.mp4", 248,
-                        NASA_VIDEO + PERSEVERANCE + "~orig.mp4", "the same Perseverance video in 4K"),
-    "apollo11": ("footage-large", "footage/apollo11_eagle_has_landed_film.mp4", 466,
-                 NASA_VIDEO + APOLLO11 + "/" + APOLLO11 + "~orig.mp4",
-                 "NASA's 1969 Apollo 11 film; includes the landing sequence"),
     "lro_color_8k": ("maps", "data/lroc_color_poles_8k.tif", 48, MOON_KIT + "lroc_color_poles_8k.tif",
                      "LRO camera global colour mosaic, 8192x4096 (source of the ground texture)"),
-    "lro_color_1k": ("maps", "data/lroc_color_poles_1k.jpg", 0.1, MOON_KIT + "lroc_color_poles_1k.jpg",
-                     "the same mosaic at 1024x512, for slides"),
-    "lola_elevation": ("maps", "data/ldem_4.tif", 4, MOON_KIT + "ldem_4.tif",
-                       "LRO laser altimeter (LOLA) global elevation, 4 pixels per degree"),
-    "lola_elevation_preview": ("maps", "data/ldem_3_8bit.jpg", 0.1, MOON_KIT + "ldem_3_8bit.jpg",
-                               "8-bit preview of the LOLA elevation map"),
 }
 
 
@@ -55,7 +43,7 @@ def fetch(key: str) -> bool:
     path = ROOT / dest
     path.parent.mkdir(parents=True, exist_ok=True)
     have = path.stat().st_size if path.exists() else 0
-    req = urllib.request.Request(url, headers={"Range": f"bytes={have}-", "User-Agent": "second-opinion-fetch"})
+    req = urllib.request.Request(url, headers={"Range": f"bytes={have}-", "User-Agent": "subsidium-fetch"})
     try:
         with urllib.request.urlopen(req, timeout=60) as r:
             if r.status == 200:          # server ignored the range: start over

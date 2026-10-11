@@ -22,9 +22,9 @@ reconstruction of the published failure, not the mission's telemetry.
 | `blue_ghost` | Firefly Blue Ghost Mission 1 landing, 2 Mar 2025, four NASA SCALPSS cameras under the lander, with altitude printed on every frame (NASA library id `Final_Out_CRF35`) | Dashboard clip with a real altitude record; `eval/truth/blue_ghost_m1_callouts.csv` was read off those labels | NASA / Firefly Aerospace |
 | `perseverance` | Perseverance descent and touchdown, onboard cameras, 18 Feb 2021 (`JPL-20210222-M2020f-0001`) | Dashboard clip, tracking only (no altitude record published with it) | NASA/JPL-Caltech |
 | `dart` | DART's DRACO camera flying into Dimorphos, 26 Sep 2022 (NASA SVS 31194) | Dashboard clip, tracking only (the replay is an uneven time-lapse) | NASA/Johns Hopkins APL |
-| `apollo11` | "Eagle Has Landed: The Flight of Apollo 11", NASA film HQ-194, 1969 | Slides and context; not run through the camera code | NASA |
+| `apollo11` | "Eagle Has Landed: The Flight of Apollo 11", NASA film HQ-194, 1969 | Slides and context; not run through the camera code (no longer fetched by tools/fetch_data.py) | NASA |
 | `lro_color_8k` | LRO camera global colour mosaic from NASA's CGI Moon Kit (SVS 4720) | Ground texture in the 3D view and `--texture data/lro_texture.png` for the simulator. A 35 degree square of the southern highlands, so it is real imagery but not to lander scale | NASA's Scientific Visualization Studio |
-| `lola_elevation` | LRO laser altimeter (LOLA) global elevation, same kit | Downloaded for slope/hazard work; not wired into anything yet | NASA's Scientific Visualization Studio |
+| `lola_elevation` | LRO laser altimeter (LOLA) global elevation, same kit | Not wired into anything yet (no longer fetched by tools/fetch_data.py) | NASA's Scientific Visualization Studio |
 
 ## Found, not downloaded
 

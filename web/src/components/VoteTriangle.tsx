@@ -1,9 +1,9 @@
 // The vote, readable on its own: three witnesses, three pair tests, who got outvoted.
 import { mm, unit } from "../theme";
-import type { SecondOpinion } from "../types";
+import type { Subsidium } from "../types";
 
 type Key = "nav" | "rf" | "cam";
-type Pair = keyof SecondOpinion["pairs"];
+type Pair = keyof Subsidium["pairs"];
 
 const R = 43;
 const NODES: Record<Key, { x: number; y: number; name: string }> = {
@@ -18,7 +18,7 @@ const EDGES: { pair: Pair; a: Key; b: Key; dx: number; dy: number }[] = [
   { pair: "rf-cam", a: "rf", b: "cam", dx: 0, dy: 24 },
 ];
 
-function verdict(so: SecondOpinion): [string, string] {
+function verdict(so: Subsidium): [string, string] {
   if (so.status.startsWith("UNRESOLVED")) return ["NO ISOLATION", "warn"];
   if (so.status.startsWith("RANGEFINDER SILENT")) return ["RF SILENT", "warn"];
   if (so.excluded.includes("rf")) return ["RF OUTVOTED", "good"];
@@ -27,7 +27,7 @@ function verdict(so: SecondOpinion): [string, string] {
   return ["3 AGREE", "good"];
 }
 
-export default function VoteTriangle({ so, reanchored }: { so: SecondOpinion; reanchored: boolean }) {
+export default function VoteTriangle({ so, reanchored }: { so: Subsidium; reanchored: boolean }) {
   const [word, tone] = verdict(so);
   return (
     <svg className="triangle" viewBox="0 0 380 330" role="img" aria-label={`Vote: ${word}`}>

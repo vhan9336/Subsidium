@@ -1,10 +1,8 @@
-"""Real hardware: Arduino rig over serial + USB webcam.
+"""The real rig: an Arduino over serial, plus a USB webcam.
 
-Arduino -> laptop, ~20 Hz:   R,<millis>,<range_mm or -1>,<steps>
-Laptop  -> Arduino, 1 char:  d = descend, u = up, s = stop, z = zero step counter
+Arduino to laptop, about 20 times a second:  R,<millis>,<range_mm or -1>,<steps>
+Laptop to Arduino, one character:            d descend, u up, s stop, z zero the step counter
 """
-from __future__ import annotations
-
 import collections
 import threading
 import time
@@ -26,55 +24,53 @@ class LiveSource(Source):
         self.cap = cv2.VideoCapture(cam_index)
         self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, width)
         self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
-        self.cap.set(cv2.CAP_PROP_AUTOFOCUS, 0)      # focus breathing looks like expansion: lock it
+        self.cap.set(cv2.CAP_PROP_AUTOFOCUS, 0)      # focus hunting looks like the image growing, so turn it off
         self.latest = {"rf": None, "steps": 0}
-        self.rf_hist: collections.deque = collections.deque(maxlen=40)
+        self.recent_rf = collections.deque(maxlen=40)
         self.descending = False
-        self._lock = threading.Lock()
-        threading.Thread(target=self._reader, daemon=True).start()
-        time.sleep(2.0)                               # Arduino resets when the port opens
+        self.lock = threading.Lock()
+        threading.Thread(target=self.read_serial, daemon=True).start()
+        time.sleep(2.0)                               # the Arduino reboots whenever the port opens
         self.command("zero")
 
-    def _reader(self):
+    def read_serial(self):
+        """Runs on its own thread and keeps the newest reading ready."""
         while True:
             try:
                 line = self.ser.readline().decode(errors="ignore").strip()
-            except serial.SerialException:
-                time.sleep(0.5)
-                continue
-            if not line.startswith("R,"):
-                continue
-            try:
-                _, _ms, rng, steps = line.split(",")
+                tag, _ms, rng, steps = line.split(",")
+                if tag != "R":
+                    continue
                 rf = float(rng)
-                with self._lock:
+                with self.lock:
                     self.latest = {"rf": rf if rf > 0 else None, "steps": int(steps)}
                     if rf > 0:
-                        self.rf_hist.append(rf)
-            except ValueError:
+                        self.recent_rf.append(rf)
+            except serial.SerialException:
+                time.sleep(0.5)
+            except ValueError:                        # a half-finished or non-data line; wait for the next
                 pass
 
     def command(self, name: str):
-        c = {"descend": "d", "up": "u", "stop": "s"}.get(name)
-        if c:
-            self.ser.write(c.encode())
+        if name in ("descend", "up", "stop"):
+            self.ser.write({"descend": b"d", "up": b"u", "stop": b"s"}[name])
             self.descending = name == "descend"
         elif name in ("zero", "reset"):
-            # calibrate: the current rangefinder reading becomes the navigation anchor
             if name == "reset":
                 self.ser.write(b"s")
                 self.descending = False
             self.ser.write(b"z")
             time.sleep(0.15)
-            with self._lock:
-                recent = list(self.rf_hist)[-10:]
+            # whatever the rangefinder says right now becomes the starting altitude
+            with self.lock:
+                recent = list(self.recent_rf)[-10:]
             self.h0 = float(np.median(recent)) if recent else self.h0
 
     def read(self) -> Sample | None:
         ok, frame = self.cap.read()
         if not ok:
             return None
-        with self._lock:
+        with self.lock:
             d = dict(self.latest)
         return Sample(time.monotonic(), frame, d["rf"], d["steps"], None, self.descending, self.h0)
 

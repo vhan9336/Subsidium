@@ -1,17 +1,15 @@
-"""Session recording and deterministic replay.
+"""Recording a session and playing it back.
 
 A session folder holds:
-  video.mp4        camera frames
-  samples.jsonl    one line per frame: raw rig readings (before faults)
-  commands.jsonl   every operator / scenario command with its time
-  meta.json        mm_per_step, h0, source kind
+  video.mp4       the camera frames
+  samples.jsonl   one line per frame with the raw readings, before any fault is injected
+  commands.jsonl  every command with the time it was given
+  meta.json       mm_per_step, h0 and the kind of source
 
-Replay re-feeds the exact frames and readings *and* re-applies the commands at the same
-moments, so a recorded demo re-runs identically (backup for the live demo) and old sessions can
-be re-scored after you change the monitor's parameters.
+Playback feeds the same frames and readings back and re-sends the commands at the same
+moments, so a recorded demo runs identically. That makes it a backup for the live demo, and
+it lets you re-score an old session after changing the monitor's settings.
 """
-from __future__ import annotations
-
 import json
 import pathlib
 import time
@@ -22,7 +20,7 @@ from .base import Sample, Source
 
 
 class Recorder:
-    def __init__(self, folder: str | pathlib.Path, meta: dict, fps: float = 30.0):
+    def __init__(self, folder, meta: dict, fps: float = 30.0):
         self.dir = pathlib.Path(folder)
         self.dir.mkdir(parents=True, exist_ok=True)
         (self.dir / "meta.json").write_text(json.dumps(meta, indent=2))
@@ -31,7 +29,7 @@ class Recorder:
         self.fps, self.writer = fps, None
 
     def frame(self, s: Sample):
-        if self.writer is None:
+        if self.writer is None:                    # we only learn the frame size from the first frame
             h, w = s.frame.shape[:2]
             self.writer = cv2.VideoWriter(str(self.dir / "video.mp4"), cv2.VideoWriter_fourcc(*"mp4v"), self.fps, (w, h))
         self.writer.write(s.frame)
@@ -42,7 +40,7 @@ class Recorder:
         self.commands.flush()
 
     def close(self):
-        if self.writer is not None:
+        if self.writer:
             self.writer.release()
         self.samples.close()
         self.commands.close()
@@ -51,23 +49,23 @@ class Recorder:
 class ReplaySource(Source):
     kind = "replay"
 
-    def __init__(self, folder: str | pathlib.Path, realtime: bool = True, loop: bool = False):
+    def __init__(self, folder, realtime: bool = True, loop: bool = False):
         self.dir = pathlib.Path(folder)
         meta = json.loads((self.dir / "meta.json").read_text())
         self.mm_per_step, self.h0 = meta["mm_per_step"], meta.get("h0")
-        self.rows = [json.loads(l) for l in open(self.dir / "samples.jsonl")]
-        cpath = self.dir / "commands.jsonl"
-        self.cmds = [json.loads(l) for l in open(cpath)] if cpath.exists() else []
+        self.rows = [json.loads(line) for line in open(self.dir / "samples.jsonl")]
+        cmds = self.dir / "commands.jsonl"
+        self.cmds = [json.loads(line) for line in open(cmds)] if cmds.exists() else []
         self.realtime, self.loop = realtime, loop
-        self._open()
+        self.open()
 
-    def _open(self):
+    def open(self):
         self.cap = cv2.VideoCapture(str(self.dir / "video.mp4"))
-        self.i, self.ci = 0, 0
-        self.t_wall0 = time.monotonic()
+        self.i = self.ci = 0                       # next sample, next command
+        self.wall0 = time.monotonic()
 
     def due_commands(self, t: float) -> list[str]:
-        """Commands recorded up to time t (the pipeline re-applies them)."""
+        """Commands recorded up to time t. The pipeline re-applies them."""
         out = []
         while self.ci < len(self.cmds) and self.cmds[self.ci]["t"] <= t:
             out.append(self.cmds[self.ci]["name"])
@@ -79,14 +77,13 @@ class ReplaySource(Source):
             if not self.loop:
                 return None
             self.cap.release()
-            self._open()
+            self.open()
         ok, frame = self.cap.read()
         if not ok:
             return None
         r = self.rows[self.i]
         self.i += 1
-        if self.realtime:
-            target = self.t_wall0 + (r["t"] - self.rows[0]["t"])
-            time.sleep(max(0.0, target - time.monotonic()))
+        if self.realtime:                          # play at the speed it was recorded
+            time.sleep(max(0.0, self.wall0 + r["t"] - self.rows[0]["t"] - time.monotonic()))
         self.h0 = r.get("h0", self.h0)
         return Sample(r["t"], frame, r["rf_raw"], r["steps"], r.get("true_alt"), r["descending"], self.h0)

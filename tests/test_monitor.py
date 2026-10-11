@@ -1,13 +1,13 @@
-"""Unit tests for the 2-of-3 integrity monitor on hand-built sensor streams (no camera)."""
+"""The voting monitor on hand-built sensor streams. No camera involved."""
 import numpy as np
 
-from so.config import load
 from so.fusion.legacy import LegacyGate
 from so.fusion.triplex import TriplexMonitor
 from so.fusion.types import Inputs
 
-CFG = load()
-V = 30.0  # mm/s
+from .common import CFG
+
+V = 30.0  # descent speed, mm/s
 
 
 def stream(n=300, dt=1 / 30, h0=450.0, rf_fn=None, cam_fn=None, nav_fn=None, seed=0):

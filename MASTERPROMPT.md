@@ -85,7 +85,6 @@ web/                React app — STARTER (wired to live data, plain UI). BUILD 
   src/telemetry.ts    WebSocket hook + rolling 20 s history + cmd()
   src/voice.ts        callout lines, verdict banners, audio playback
   src/App.tsx         starter layout — replace placeholders with components below
-web-lite/           single-file fallback dashboard (/lite) — keep working, don't extend
 eval/run_video.py   real-footage scorer — DONE (`--selftest` passes); needs real data
 tools/              make_callouts.py (ElevenLabs), stats.py (receipts), cam_check.py (webcam test)
 firmware/rig/       Arduino sketch — written, NOT yet run on hardware

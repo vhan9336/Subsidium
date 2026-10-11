@@ -16,11 +16,12 @@ type Tone = "good" | "warn" | "bad" | "idle";
 const VIEW_NAME: Record<View, string> = { cam: "Lander camera", "3d": "3D view" };
 const SOURCE = { sim: "Simulator", live: "Live rig", replay: "Recorded run", video: "Real footage" };
 
+// keys that send a command straight to the engine
 const KEYS: Record<string, string> = {
   d: "descend", s: "stop", u: "up", r: "reset", t: "terrain_up", y: "terrain_down", "0": "fault:clear",
 };
 
-/** What is going on right now, in one sentence, read from the live state (not from old events). */
+/** What's going on right now in one sentence, read from the live state and not from old events. */
 function headline(s: State, log: Logged[]): [string, Tone] {
   const so = s.so;
   if (so.status.startsWith("UNRESOLVED")) return ["The sensors disagree and none can be singled out. Assuming the closest ground.", "warn"];
@@ -45,25 +46,26 @@ function verdict(s: State, log: Logged[]): string {
   return so.cam_abstain ? "2 witnesses agree" : "3 of 3 agree";
 }
 
+/** Says how far off each brain is, in plain words. */
 function consequence(legacyErr: number | null, soErr: number | null): string {
-  const off = (e: number) => `${mm(Math.abs(e))} ${unit()} too ${e < 0 ? "low" : "high"}`;
   if (legacyErr == null || soErr == null) return "";
-  const l = Math.abs(legacyErr) > ERR_BAD_MM;
-  const o = Math.abs(soErr) > ERR_BAD_MM;
-  if (l && !o) return `The legacy gate believes it is ${off(legacyErr)}. Subsidium is on the true altitude.`;
-  if (l && o) return `The legacy gate is ${off(legacyErr)}; Subsidium is ${off(soErr)}.`;
-  if (o) return `Subsidium is ${off(soErr)}; the legacy gate is on the true altitude.`;
+  const off = (e: number) => `${mm(Math.abs(e))} ${unit()} too ${e < 0 ? "low" : "high"}`;
+  const legacyBad = Math.abs(legacyErr) > ERR_BAD_MM;
+  const soBad = Math.abs(soErr) > ERR_BAD_MM;
+  if (legacyBad && !soBad) return `The legacy gate believes it is ${off(legacyErr)}. Subsidium is on the true altitude.`;
+  if (legacyBad && soBad) return `The legacy gate is ${off(legacyErr)}; Subsidium is ${off(soErr)}.`;
+  if (soBad) return `Subsidium is ${off(soErr)}; the legacy gate is on the true altitude.`;
   return "Both brains are on the true altitude.";
 }
 
 export default function App() {
-  const [log, setLog] = useState<Logged[]>([]);
+  const [log, setLog] = useState<Logged[]>([]); // recent events, which the headline reads
   const [scenarios, setScenarios] = useState<ScenarioInfo[]>([]);
   const [voiceOn, setVoiceOn] = useState(false);
-  const [picked, setPicked] = useState<View | null>(null);
+  const [picked, setPicked] = useState<View | null>(null); // the view the user chose to enlarge
   const [proof, setProof] = useState(false);
   const [explain, setExplain] = useState(false);
-  const { state: s, connected, history } = useTelemetry((key: string, st: State) => {
+  const { state: s, connected, history } = useTelemetry((key, st) => {
     voice.say(key);
     if (EVENT_LABEL[key]) setLog((l) => [...l.filter((e) => e.t <= st.t).slice(-8), { key, t: st.t }]);
   });
@@ -74,48 +76,47 @@ export default function App() {
 
   const clip = s?.clip ?? null;
   setUnit(clip?.mm_per_m); // real footage is shown in the mission's metres, the rig in mm
-  const rebuilt = clip?.camera === "reconstructed"; // a mission broadcast: no descent camera in the picture
-  const voting = !clip || clip.truth; // a clip without an altitude record is tracking-only
+  const rebuilt = clip?.camera === "reconstructed"; // a mission broadcast, so there's no descent camera in the picture
+  const voting = !clip || clip.truth; // a clip with no altitude record is tracking only
   const sc = s?.scenario ?? null;
 
-  // Real footage is one picture with the software layer on it. The simulator and the rig lead with
-  // the 3D view and keep the camera as a thumbnail.
+  // Real footage is one picture with the software layer over it. The simulator and the rig lead
+  // with the 3D view and keep the camera as a thumbnail.
   const views: View[] = s?.kind === "video" ? ["cam"] : ["3d", "cam"];
   const main: View = picked && views.includes(picked) ? picked : views[0];
   const place = (v: View) => (v === main ? "is-main" : "is-thumb");
-  const cycle = useRef(() => {});
-  cycle.current = () => setPicked(views[(views.indexOf(main) + 1) % views.length]);
-  const toggleVoice = () => setVoiceOn(voice.toggle());
+  const swapViews = () => setPicked(views[(views.indexOf(main) + 1) % views.length]);
 
   useEffect(() => setLog([]), [sc?.id]); // a new replay starts with a clean history
-
   useEffect(() => setPicked(null), [s?.kind]); // footage and simulator each lead with their own view
 
+  // The key handler is set up once, so it reads the latest values through this ref.
+  const latest = useRef({ scenarios, swapViews });
+  latest.current = { scenarios, swapViews };
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.ctrlKey || e.metaKey || e.altKey || e.repeat) return;
       const k = e.key.toLowerCase();
+      const { scenarios, swapViews } = latest.current;
       if (k === "v") setVoiceOn(voice.toggle());
       else if (k === "e") setExplain(true);
       else if (k === "m") setProof((p) => !p);
       else if (k === "escape") setProof(false);
-      else if (k === "c") cycle.current();
+      else if (k === "c") swapViews();
       else if (KEYS[k]) {
         if (k === "r") setLog([]);
         cmd(KEYS[k]);
-      } else {
-        const n = Number(k);
-        if (n >= 1 && n <= scenarios.length) cmd(`scenario:${scenarios[n - 1].id}`);
-      }
+      } else if (Number(k) >= 1 && Number(k) <= scenarios.length) cmd(`scenario:${scenarios[Number(k) - 1].id}`);
     };
     addEventListener("keydown", onKey);
     return () => removeEventListener("keydown", onKey);
-  }, [scenarios]);
+  }, []);
 
   const legacyErr = s?.truth != null && s.legacy.est != null ? s.legacy.est - s.truth : null;
   const soErr = s?.truth != null && s.so.est != null ? s.so.est - s.truth : null;
-  const reanchored = !!s && log.some((e) => e.key === "terrain_change" && s.t - e.t < 4);
+  const reanchored = !!s && log.some((e) => e.key === "terrain_change" && s.t - e.t < 4); // for the vote triangle
   const [line, tone] = s && voting ? headline(s, log) : ["", "idle" as Tone];
+  const badClass = (err: number | null) => (Math.abs(err ?? 0) > ERR_BAD_MM ? "bad" : "");
 
   return (
     <div className="app">
@@ -132,7 +133,7 @@ export default function App() {
         <main>
           <section className="left">
             <div className={`stage main-${main} ${views.length === 1 ? "solo" : ""}`}>
-              {/* every view stays mounted; C or a click on the thumbnail changes which one is large */}
+              {/* both views stay mounted. C or a click on the thumbnail swaps which one is large */}
               <figure className={`view ${place("cam")} ${rebuilt ? "broadcast" : ""}`} onClick={() => setPicked("cam")}>
                 <CameraFeed alt="Downward camera" />
                 {voting && <FootageHud s={s} verdict={verdict(s, log)} tone={tone} />}
@@ -154,7 +155,7 @@ export default function App() {
               </p>
               <h2 className={tone}>{line}</h2>
               <p className="then">{consequence(legacyErr, soErr)}</p>
-              {/* cues are instructions for whoever is working the physical rig */}
+              {/* a cue is an instruction for whoever is working the physical rig */}
               {sc?.cue && s.kind === "live" && <p className="cue">{sc.cue}</p>}
 
               <dl className="three">
@@ -162,11 +163,11 @@ export default function App() {
                   <dt>True altitude</dt>
                   <dd>{mm(s.truth)}<small> {unit()}</small></dd>
                 </div>
-                <div className={`k-legacy ${Math.abs(legacyErr ?? 0) > ERR_BAD_MM ? "bad" : ""}`}>
+                <div className={`k-legacy ${badClass(legacyErr)}`}>
                   <dt>Legacy gate <span>{plainStatus(s.legacy.status, "legacy")}</span></dt>
                   <dd>{mm(s.legacy.est)}<em>{signed(legacyErr)}</em></dd>
                 </div>
-                <div className={`k-so ${Math.abs(soErr ?? 0) > ERR_BAD_MM ? "bad" : ""}`}>
+                <div className={`k-so ${badClass(soErr)}`}>
                   <dt>Subsidium <span>{plainStatus(s.so.status, "so")}</span></dt>
                   <dd>{mm(s.so.est)}<em>{signed(soErr)}</em></dd>
                 </div>
@@ -201,7 +202,8 @@ export default function App() {
         </main>
       )}
 
-      <ScenarioPanel s={s} scenarios={scenarios} voiceOn={voiceOn} onVoice={toggleVoice} proof={proof} onProof={() => setProof((p) => !p)} onExplain={() => setExplain(true)} />
+      <ScenarioPanel s={s} scenarios={scenarios} voiceOn={voiceOn} onVoice={() => setVoiceOn(voice.toggle())}
+        proof={proof} onProof={() => setProof((p) => !p)} onExplain={() => setExplain(true)} />
       {explain && <Explain onClose={() => setExplain(false)} />}
     </div>
   );

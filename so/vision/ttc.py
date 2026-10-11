@@ -1,19 +1,17 @@
-"""Time-to-contact (tau) from image expansion — the camera's independent altitude check.
+"""Time to contact (tau), worked out from how fast the ground grows in the image.
 
-Physics: a camera descending at speed v toward ground at distance Z sees the ground
-image grow. Between two frames dt apart the image scales by s = Z_old / Z_new, so
+A camera sinking toward the ground at speed v sees the ground get bigger. If two frames dt
+apart differ by an image scale s, then the time left until contact is
 
-    tau_new = Z_new / v = dt / (s - 1)
+    tau = dt / (s - 1)
 
-tau needs no map, no known scale and no lidar. Gannets time their dive with it
-(Lee & Reddish, Nature 1981). Multiply by the descent rate from navigation and you
-get an altitude that shares no hardware with the rangefinder:  h_vis = tau * v.
+That needs no map, no known size and no laser. (Gannets time their dives this way, see Lee &
+Reddish, Nature 1981.) Multiply tau by the descent speed and you get an altitude that shares
+no hardware with the rangefinder:  h = tau * v.
 
-Hazards come from the same math: a boulder is closer than the ground around it, so
-its patch of image expands faster. Per-tile expansion -> per-tile relative height.
+The same math finds hazards: a boulder is closer than the ground around it, so its patch of
+image grows faster. Compare each tile's growth to the whole image's and you get its height.
 """
-from __future__ import annotations
-
 import collections
 from dataclasses import dataclass, field
 
@@ -23,7 +21,7 @@ import numpy as np
 
 @dataclass
 class TTCResult:
-    tau: float | None            # seconds to contact (None = not approaching / no lock)
+    tau: float | None            # seconds to contact. None = no lock or not approaching
     scale: float | None          # image scale between compared frames
     dt: float                    # seconds between compared frames
     n_inliers: int
@@ -91,24 +89,22 @@ class TTCEstimator:
         n = int(inl.sum())
         quality = float(inl.mean()) * min(1.0, n / 60)
         tau = None
-        if s < 0.995 and quality > 0.25 and self.taus:
-            # the ground fell away (e.g. flew past a crater rim / plateau removed): restart the window
-            last = self.buf[-1]
-            self.buf.clear(); self.buf.append(last); self.taus.clear(); self.hazard_avg = None
-            return TTCResult(None, s, dt, n, quality)
-        if s > 1.0005 and quality > 0.25 and self.taus:
-            t_now = self.buf[-1][0]
-            prev = float(np.median([tt - (t_now - ti) for ti, tt in self.taus]))
-            if dt / (s - 1.0) < 0.4 * prev:
-                # the ground jumped (e.g. a crater rim slid under): frames before the jump are a
-                # different surface, so restart the look-back window instead of averaging across it
-                last = self.buf[-1]
-                self.buf.clear(); self.buf.append(last); self.taus.clear(); self.hazard_avg = None
+        if quality > 0.25 and self.taus:
+            jumped = s < 0.995                           # the ground fell away (crater rim, plateau pulled out)
+            if s > 1.0005:
+                t_now = self.buf[-1][0]
+                prev = float(np.median([tt - (t_now - ti) for ti, tt in self.taus]))
+                jumped = dt / (s - 1.0) < 0.4 * prev      # the ground jumped up under us
+            if jumped:
+                # frames from before the jump show a different surface, so start the window over
+                self.buf = collections.deque([self.buf[-1]], maxlen=self.buf.maxlen)
+                self.taus.clear()
+                self.hazard_avg = None
                 return TTCResult(None, s, dt, n, quality)
         if s > 1.0005 and quality > 0.25:
             self.taus.append((self.buf[-1][0], dt / (s - 1.0)))
             t_now = self.buf[-1][0]
-            # tau shrinks 1 s per s: age-correct older samples before taking the median
+            # tau shrinks by one second every second, so age-correct old samples before the median
             tau = float(np.median([tt - (t_now - ti) for ti, tt in self.taus]))
         hazard, site = self._hazard(a, b, g1.shape, s, M)
         return TTCResult(tau, s, dt, n, quality, hazard, site, b[inl])
