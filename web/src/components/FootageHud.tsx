@@ -9,7 +9,7 @@ const WITNESS = ["nav", "rf", "cam"] as const;
 
 export default function FootageHud({ s, verdict, tone }: { s: State; verdict: string; tone: Tone }) {
   const clip = s.clip;
-  const rebuilt = clip?.camera === "reconstructed"; // a mission broadcast and not a descent camera
+  const rebuilt = clip?.camera === "reconstructed"; // a mission with no published descent camera, so one is drawn over the real site
   const camOut = s.so.excluded.includes("cam");
   const locked = s.cam != null && !camOut;
   const tau = s.tau ?? s.tau_raw;
@@ -22,10 +22,10 @@ export default function FootageHud({ s, verdict, tone }: { s: State; verdict: st
   const ticks = Array.from({ length: Math.floor(top / step) + 1 }, (_, i) => i * step);
 
   return (
-    <div className={`hud ${rebuilt ? "broadcast" : ""}`}>
+    <div className="hud">
       {clip && <i className="hud-progress" style={{ transform: `scaleX(${Math.min(clip.pos / clip.dur, 1)})` }} />}
       <div className="hud-source">
-        <b>{rebuilt ? "The real broadcast" : clip ? "Real footage" : s.kind === "live" ? "Live webcam" : "Simulated camera"}</b>
+        <b>{rebuilt ? "Simulated camera, real site" : clip ? "Real footage" : s.kind === "live" ? "Live webcam" : "Simulated camera"}</b>
         {!rebuilt && (
           <p className={locked ? "lock" : ""}>
             {locked ? "Camera locked on the surface" : camOut ? "Camera outvoted" : "Camera has no lock yet"}

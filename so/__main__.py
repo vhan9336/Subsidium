@@ -23,7 +23,7 @@ def build_source(args, cfg, mm_per_step):
     """Pick the source the command line asked for. Imports are local so unused ones never load."""
     if args.sim:
         from .sources.sim import SimSource
-        return SimSource(mm_per_step, texture=args.texture, render=(640, 480))
+        return SimSource(mm_per_step, texture=args.texture, render=(480, 360))
     if args.video is not None:
         from .sources.hybrid import HybridSource
         from .sources.sim import SimSource
@@ -34,7 +34,7 @@ def build_source(args, cfg, mm_per_step):
             from .sources.live import LiveSource
             cam = cfg["camera"]
             rig = LiveSource(args.rig, cfg["rig"]["mm_per_tenth"], camera_choice(args, cfg), cam["width"], cam["height"], cfg["rig"]["baud"])
-        return HybridSource(VideoSource(mm_per_step, args.video or None), SimSource(mm_per_step, render=(640, 480)), rig)
+        return HybridSource(VideoSource(mm_per_step, args.video or None), SimSource(mm_per_step, render=(480, 360)), rig)
     if args.replay:
         from .sources.replay import ReplaySource
         return ReplaySource(args.replay, loop=True)

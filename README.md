@@ -19,12 +19,11 @@ cd web && npm install && npm run build && cd ..
 python -m so serve --sim                                 # then open http://localhost:8000
 ```
 
-The number keys run the replays: Nominal, then the four crashes (HAKUTO-R M1, Resilience, Odysseus, Athena). With `--video` (below), 1 and 2 are real footage and the replays follow. The bar under the picture restarts the replay, pauses it and scrubs back through the last minute. Press M for the math behind the verdict and E for the presentation.
+The number keys run the numbered strip: the Nominal baseline, the real footage clips (with `--video`, below), then the four crashes (Odysseus, Athena, HAKUTO-R M1, Resilience). The bar under the picture restarts the replay, pauses it and scrubs back through the last minute. Press M for the math behind the verdict and E for the presentation.
 
 | Key | Does |
 |---|---|
-| 1, 2 | Play real footage (Blue Ghost, Perseverance) when started with `--video`. Without it, the numbers start at the replays |
-| next 5 | The replays: Nominal, then the four crashes (HAKUTO-R, Resilience, Odysseus, Athena) |
+| 1 to 7 | The numbered strip, in this order: Nominal baseline, the two real footage clips (only with `--video`), then Odysseus, Athena, HAKUTO-R and Resilience. Without `--video` the numbers just skip the footage |
 | M | Show or hide the math screen |
 | E | Open the Canva presentation (set `canva_url` in `config.toml`, or paste the link the first time) |
 | Space | Pause or resume the run |

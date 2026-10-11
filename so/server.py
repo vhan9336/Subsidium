@@ -3,6 +3,7 @@
   GET  /              the web app (build it first: cd web && npm run build)
   WS   /ws            the state dict about 15 times a second (shape in web/src/types.ts)
   GET  /frame.jpg     the latest camera frame, with the overlay drawn on
+  GET  /alt.jpg       the second view (the control-center broadcast), for the clips that have one
   GET  /video         the same frames as an MJPEG stream
   POST /cmd/{name}    descend | stop | up | reset | terrain_up | terrain_down | fault:<name or clear> |
                       scenario:<id or stop> | record_start | record_stop | clip:<id> |
@@ -35,7 +36,7 @@ HISTORY = 900  # states and frames kept for scrubbing: about a minute at 15 per 
 
 def create_app(pipe: Pipeline) -> FastAPI:
     app = FastAPI(title="Subsidium")
-    shared = {"state": {}, "events": [], "jpeg": b"", "paused": False, "cursor": None}
+    shared = {"state": {}, "events": [], "jpeg": b"", "alt": b"", "paused": False, "cursor": None}
     lock = threading.Lock()
     # Every other tick is kept as a (state, frame) pair, so the dashboard can scrub back through the run.
     history = collections.deque(maxlen=HISTORY)
@@ -62,8 +63,8 @@ def create_app(pipe: Pipeline) -> FastAPI:
                 ticks += 1
                 if ticks % 2 == 0:
                     # the score dict is reused every tick, so keep a copy of what it said at this moment
-                    history.append(({**st, "score": copy.deepcopy(st["score"])}, pipe.jpeg))
-                shared["state"], shared["jpeg"] = st, pipe.jpeg
+                    history.append(({**st, "score": copy.deepcopy(st["score"])}, pipe.jpeg, pipe.alt_jpeg))
+                shared["state"], shared["jpeg"], shared["alt"] = st, pipe.jpeg, pipe.alt_jpeg
                 shared["events"].extend(st["events"])
                 del shared["events"][:-200]
 
@@ -160,15 +161,24 @@ def create_app(pipe: Pipeline) -> FastAPI:
             pipe.command(name)
         return {"ok": True}
 
-    def latest_jpeg() -> bytes:
+    def latest_jpeg(which: int = 1) -> bytes:
+        """The picture to show now: the camera (1) or the second view (2). While scrubbing, the one from that moment."""
         with lock:
-            return history[shared["cursor"]][1] if shared["cursor"] is not None else shared["jpeg"]
+            if shared["cursor"] is not None:
+                return history[shared["cursor"]][which]
+            return shared["jpeg"] if which == 1 else shared["alt"]
 
     @app.get("/frame.jpg")
     def frame():
         jpg = latest_jpeg()
         return Response(jpg, media_type="image/jpeg", headers={"Cache-Control": "no-store"},
                         status_code=200 if jpg else 503)
+
+    @app.get("/alt.jpg")
+    def alt_frame():
+        jpg = latest_jpeg(2)
+        return Response(jpg, media_type="image/jpeg", headers={"Cache-Control": "no-store"},
+                        status_code=200 if jpg else 404)
 
     @app.get("/video")
     def video():

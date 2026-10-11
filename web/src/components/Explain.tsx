@@ -1,9 +1,10 @@
 // The presentation, opened with E: a Canva design filling the whole screen.
 // The link comes from canva_url in config.toml, or from a box on the page the first time.
 //
-// Once opened, this stays mounted and is only hidden when closed. That way the Canva frame is
-// never reloaded, and reopening drops you on the slide you left.
-import { useEffect, useState } from "react";
+// It loads in the background as soon as the page does, so the first time you open it there's
+// nothing to wait for. It stays mounted and is only hidden when closed, so the frame is never
+// reloaded and reopening drops you on the slide you left.
+import { useEffect, useRef, useState } from "react";
 
 const SAVED = "subsidium-canva-url";
 
@@ -31,23 +32,22 @@ export default function Explain({ open, onClose }: { open: boolean; onClose: () 
   const [url, setUrl] = useState<string | null>(embedUrl(saved()));
   const [pasted, setPasted] = useState("");
   const [bad, setBad] = useState(false);
-  const [everOpened, setEverOpened] = useState(false); // nothing loads until the first time it's opened
+  const input = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!open) return;
-    setEverOpened(true);
+    input.current?.focus(); // the paste box, if there is one
     // when the frame has focus the browser keeps its keys, so make sure they come back to the page on close
     return () => (document.activeElement as HTMLElement | null)?.blur();
   }, [open]);
 
   // a link set in config.toml wins over one pasted earlier
   useEffect(() => {
-    if (!everOpened) return;
     fetch("/presentation.json")
       .then((r) => r.json())
       .then((d: { url: string }) => d.url && setUrl(embedUrl(d.url)))
       .catch(() => {});
-  }, [everOpened]);
+  }, []);
 
   useEffect(() => {
     if (!open) return;
@@ -57,8 +57,6 @@ export default function Explain({ open, onClose }: { open: boolean; onClose: () 
     addEventListener("keydown", onKey);
     return () => removeEventListener("keydown", onKey);
   }, [open, onClose]);
-
-  if (!everOpened) return null;
 
   const save = () => {
     const next = embedUrl(pasted);
@@ -91,7 +89,7 @@ export default function Explain({ open, onClose }: { open: boolean; onClose: () 
             In Canva, open the design and choose Share, then More, then Embed, and copy the link. Paste it below.
             The page remembers it. To set it for good, put it in <code>canva_url</code> in <code>config.toml</code>.
           </p>
-          <input value={pasted} onChange={(e) => setPasted(e.target.value)} placeholder="https://www.canva.com/design/…" aria-label="Canva link" autoFocus />
+          <input value={pasted} onChange={(e) => setPasted(e.target.value)} placeholder="https://www.canva.com/design/…" aria-label="Canva link" ref={input} />
           <button type="submit">Show it</button>
           {bad && <p className="bad">That doesn't look like a Canva link. It should start with https://www.canva.com/.</p>}
         </form>

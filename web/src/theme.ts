@@ -53,6 +53,14 @@ export function signed(v: number | null | undefined) {
   return `${r > 0 ? "+" : r < 0 ? "−" : "±"}${show(Math.abs(r))}`;
 }
 
+/** How far off an error is, as a percent of the true value: "−21%", or "+0.4%" when it's small. */
+export function percent(error: number | null | undefined, truth: number | null | undefined) {
+  if (error == null || !truth) return "";
+  const p = (error / truth) * 100;
+  const text = Math.abs(p) < 10 ? Math.abs(p).toFixed(1) : Math.abs(Math.round(p)).toString();
+  return `${p > 0.05 ? "+" : p < -0.05 ? "−" : "±"}${text}%`;
+}
+
 /** Seconds until the ground at the current descent speed, or null when the lander isn't descending. */
 export const timeToContact = (altitude: number | null | undefined, speed: number) =>
   altitude == null || speed <= 1 ? null : Math.max(altitude, 0) / speed;

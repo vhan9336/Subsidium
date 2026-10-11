@@ -3,7 +3,7 @@
 // gate's rule beside it, and where each number on screen comes from. It's the answer to "prove it".
 import { useEffect, useState, type MutableRefObject } from "react";
 import { NAME, SENSORS, origin, type Sensor } from "../readings";
-import { EVENT_LABEL, mm, signed, timeToContact, unit } from "../theme";
+import { EVENT_LABEL, mm, percent, signed, timeToContact, unit } from "../theme";
 import type { State } from "../types";
 import AltitudePlot from "./AltitudePlot";
 import Lanes from "./Lanes";
@@ -164,8 +164,8 @@ export default function Proof({ s, history, reanchored }: { s: State; history: M
         <table>
           <thead><tr><th /><th>Believes</th><th>Off truth</th><th>Worst</th><th>Contact in</th><th>Status</th></tr></thead>
           <tbody>
-            <tr><td className="legacy">Legacy gate</td><td>{mm(s.legacy.est)}</td><td>{signed(errorOf(s.legacy.est))}</td><td>{mm(s.score.legacy.max)}</td><td>{seconds(s.legacy.est, s.v)}</td><td>{s.legacy.status}</td></tr>
-            <tr><td className="so">Subsidium</td><td>{mm(s.so.est)}</td><td>{signed(errorOf(s.so.est))}</td><td>{mm(s.score.so.max)}</td><td>{seconds(s.so.est, s.v)}</td><td>± {mm(s.so.sigma)}</td></tr>
+            <tr><td className="legacy">Legacy gate</td><td>{mm(s.legacy.est)}</td><td>{signed(errorOf(s.legacy.est))} <span className="dim">{percent(errorOf(s.legacy.est), s.truth)}</span></td><td>{mm(s.score.legacy.max)}</td><td>{seconds(s.legacy.est, s.v)}</td><td>{s.legacy.status}</td></tr>
+            <tr><td className="so">Subsidium</td><td>{mm(s.so.est)}</td><td>{signed(errorOf(s.so.est))} <span className="dim">{percent(errorOf(s.so.est), s.truth)}</span></td><td>{mm(s.score.so.max)}</td><td>{seconds(s.so.est, s.v)}</td><td>± {mm(s.so.sigma)}</td></tr>
             <tr><td className="truth">Actual</td><td>{mm(s.truth)}</td><td /><td /><td>{seconds(s.truth, s.v)}</td><td /></tr>
           </tbody>
         </table>

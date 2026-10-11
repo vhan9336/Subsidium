@@ -19,13 +19,15 @@ const FAULTS: [string, string][] = [
   ["cam_blind", "Camera blind"],
 ];
 
+const CRASH_ORDER = ["odysseus_im1", "athena_im2", "hakuto_r_m1", "resilience"];
+
 export type PlaylistItem = { command: string; name: string; detail: string; hint?: string; scenarioId?: string; clipId?: string };
 
 /**
  * Everything the number keys can start, in order: any real-footage clips, then the mission replays
- * (there are clips only when the engine runs with --video). Real footage comes first, to show what
- * Subsidium does. The replays follow: the healthy baseline, then the four crashes. The bottom bar
- * and the number keys share this list.
+ * (there are clips only when the engine runs with --video). The order is a story: the healthy
+ * baseline, real footage to show what Subsidium does, then the crashes, ending with the two ispace
+ * ones that have their own broadcasts. The bottom bar and the number keys share this list.
  */
 export function playlist(scenarios: ScenarioInfo[], clips: ClipInfo[], mixed = false): PlaylistItem[] {
   const replays = scenarios.map((sc) => ({
@@ -41,7 +43,11 @@ export function playlist(scenarios: ScenarioInfo[], clips: ClipInfo[], mixed = f
     detail: c.truth ? "real footage" : "real footage, camera only",
     hint: c.truth ? "Has an altitude record, so all three witnesses run" : "No altitude record: camera tracking only",
   }));
-  return [...footage, ...replays];
+  const rank = (item: PlaylistItem) => {
+    const i = CRASH_ORDER.indexOf(item.scenarioId ?? "");
+    return item.scenarioId === "nominal" ? 0 : i >= 0 ? 2 + i : 1; // anything unlisted sits with the footage
+  };
+  return [...replays, ...footage].sort((a, b) => rank(a) - rank(b));
 }
 
 export default function ScenarioPanel({ s, scenarios, clips, voiceOn, onVoice, proof, onProof, onExplain }: {

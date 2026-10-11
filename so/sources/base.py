@@ -13,10 +13,12 @@ class Sample:
     true_alt: float | None        # the simulator knows the real altitude; hardware doesn't
     descending: bool
     h0: float | None = None       # altitude when the step counter was zeroed, mm
+    alt_frame: np.ndarray | None = None    # a second picture to show beside the camera, like a mission broadcast
 
     def meta(self) -> dict:
         d = asdict(self)
         d.pop("frame")
+        d.pop("alt_frame")
         return d
 
 

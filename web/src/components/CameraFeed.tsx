@@ -3,7 +3,7 @@
 // it recovers on its own if the engine restarts.
 import { useEffect, useRef } from "react";
 
-export default function CameraFeed({ alt }: { alt: string }) {
+export default function CameraFeed({ alt, src = "/frame.jpg" }: { alt: string; src?: string }) {
   const img = useRef<HTMLImageElement>(null);
   useEffect(() => {
     let live = true;
@@ -12,7 +12,7 @@ export default function CameraFeed({ alt }: { alt: string }) {
     const next = async () => {
       let wait = 60;
       try {
-        const r = await fetch("/frame.jpg", { cache: "no-store" });
+        const r = await fetch(src, { cache: "no-store" });
         if (!r.ok) throw new Error(String(r.status));
         const fresh = URL.createObjectURL(await r.blob());
         if (live && img.current) img.current.src = fresh;
@@ -29,6 +29,6 @@ export default function CameraFeed({ alt }: { alt: string }) {
       clearTimeout(timer);
       if (url) URL.revokeObjectURL(url);
     };
-  }, []);
+  }, [src]);
   return <img ref={img} alt={alt} />;
 }

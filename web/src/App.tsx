@@ -8,15 +8,14 @@ import Proof from "./components/Proof";
 import ScenarioPanel, { playlist } from "./components/ScenarioPanel";
 import Scene3D from "./components/Scene3D";
 import { cmd, useTelemetry } from "./telemetry";
-import { ERR_BAD_MM, EVENT_LABEL, mm, plainStatus, setUnit, signed, timeToContact, unit } from "./theme";
+import { ERR_BAD_MM, EVENT_LABEL, mm, percent, plainStatus, setUnit, signed, timeToContact, unit } from "./theme";
 import type { ClipInfo, ScenarioInfo, State } from "./types";
 import { voice } from "./voice";
 
 type Logged = { key: string; t: number };
-type View = "cam" | "3d";
+type View = "cam" | "3d" | "alt";
 type Tone = "good" | "warn" | "bad" | "idle";
-const VIEW_NAME: Record<View, string> = { cam: "Lander camera", "3d": "3D view" };
-const SOURCE = { sim: "Simulator", live: "Live rig", replay: "Recorded run", video: "Real footage" };
+const VIEW_NAME: Record<View, string> = { cam: "Lander camera", "3d": "3D view", alt: "Control center" };
 
 // keys that send a command straight to the engine
 const KEYS: Record<string, string> = {
@@ -83,7 +82,7 @@ export default function App() {
   const [picked, setPicked] = useState<View | null>(null); // the view the user chose to enlarge
   const [proof, setProof] = useState(false);
   const [explain, setExplain] = useState(false);
-  const [notice, setNotice] = useState(""); // a short message in the top bar, like "No rig connected"
+  const [notice, setNotice] = useState(""); // a short message shown as a toast, like "No rig attached"
   const { state: s, connected, history } = useTelemetry((key, st) => {
     voice.say(key);
     if (EVENT_LABEL[key]) setLog((l) => [...l.filter((e) => e.t <= st.t).slice(-8), { key, t: st.t }]);
@@ -96,13 +95,14 @@ export default function App() {
 
   const clip = s?.clip ?? null;
   setUnit(clip?.mm_per_m); // real footage is shown in the mission's metres, the rig in mm
-  const rebuilt = clip?.camera === "reconstructed"; // a mission broadcast, so there's no descent camera in the picture
+  const rebuilt = clip?.camera === "reconstructed"; // no descent camera was published for this mission, so one is drawn over the real site
   const voting = !clip || clip.truth; // a clip with no altitude record is tracking only
   const sc = s?.scenario ?? null;
 
   // Real footage leads with the picture and its software layer, with the 3D view beside it as a
   // thumbnail. The simulator and the rig lead with the 3D view and keep the camera as the thumbnail.
   const views: View[] = s?.kind === "video" || s?.kind === "live" ? ["cam", "3d"] : ["3d", "cam"];
+  if (clip?.alt_view) views.push("alt"); // a mission broadcast can be shown beside the simulated camera
   const main: View = picked && views.includes(picked) ? picked : views[0];
   const place = (v: View) => (v === main ? "is-main" : "is-thumb");
   const swapViews = () => setPicked(views[(views.indexOf(main) + 1) % views.length]);
@@ -164,24 +164,25 @@ export default function App() {
     <div className="app">
       <header className="bar">
         <h1>Subsidium</h1>
-        <p>Three sensors report altitude. The odd one out is outvoted.</p>
-        <div className="bar-right">
-          {notice && <span className="notice">{notice}</span>}
-          {s?.faults.map((f) => <span key={f} className="fault">Injected fault: {f.replace("_", " ")}</span>)}
-          <span className={`source ${connected ? "" : "down"}`}>{connected ? SOURCE[s?.kind ?? "sim"] : "Engine offline"}</span>
-        </div>
       </header>
+      {notice && <p className="toast" role="status">{notice}</p>}
 
       {s && proof ? <Proof s={s} history={history} reanchored={reanchored} /> : s ? (
         <main>
           <section className="left">
             <div className={`stage main-${main} ${views.length === 1 ? "solo" : ""}`}>
               {/* both views stay mounted. C or a click on the thumbnail swaps which one is large */}
-              <figure className={`view ${place("cam")} ${rebuilt ? "broadcast" : ""}`} onClick={() => setPicked("cam")}>
+              <figure className={`view ${place("cam")}`} onClick={() => setPicked("cam")}>
                 <CameraFeed alt="Downward camera" />
                 {voting && <FootageHud s={s} verdict={verdict(s, seen)} tone={tone} />}
                 <figcaption>{VIEW_NAME.cam}</figcaption>
               </figure>
+              {clip?.alt_view && (
+                <figure className={`view ${place("alt")}`} onClick={() => setPicked("alt")}>
+                  <CameraFeed alt={clip.alt_view} src="/alt.jpg" />
+                  <figcaption>{VIEW_NAME.alt}</figcaption>
+                </figure>
+              )}
               <figure className={`view scene ${place("3d")}`} hidden={!views.includes("3d")} onClick={() => main !== "3d" && setPicked("3d")}>
                 <Scene3D s={s} />
                 <figcaption>{VIEW_NAME["3d"]}</figcaption>
@@ -211,11 +212,11 @@ export default function App() {
                 </div>
                 <div className={`k-legacy ${badClass(legacyErr)}`}>
                   <dt>Legacy gate <span>{plainStatus(s.legacy.status, "legacy")}<br />{contactLine(s.legacy.est, s.truth, s.v)}</span></dt>
-                  <dd>{mm(s.legacy.est)}<em>{signed(legacyErr)}</em></dd>
+                  <dd>{mm(s.legacy.est)}<em>{signed(legacyErr)}<span>{percent(legacyErr, s.truth)}</span></em></dd>
                 </div>
                 <div className={`k-so ${badClass(soErr)}`}>
                   <dt>Subsidium <span>{plainStatus(s.so.status, "so")}<br />{contactLine(s.so.est, s.truth, s.v)}</span></dt>
-                  <dd>{mm(s.so.est)}<em>{signed(soErr)}</em></dd>
+                  <dd>{mm(s.so.est)}<em>{signed(soErr)}<span>{percent(soErr, s.truth)}</span></em></dd>
                 </div>
               </dl>
 

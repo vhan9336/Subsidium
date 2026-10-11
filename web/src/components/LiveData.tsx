@@ -2,7 +2,7 @@
 // doing, the camera's time to contact and lock quality, the pair tests, and the running scores.
 // The big numbers beside it say what happened. This says why.
 import { NAME, SENSORS, sensorState, type Sensor } from "../readings";
-import { EVENT_LABEL, mm, unit } from "../theme";
+import { EVENT_LABEL, mm, percent, unit } from "../theme";
 import type { State } from "../types";
 
 const PAIRS: [Sensor, Sensor][] = [["nav", "rf"], ["nav", "cam"], ["rf", "cam"]];
@@ -19,6 +19,7 @@ export default function LiveData({ s, events }: { s: State; events: { key: strin
         Live data
         <span>
           {s.t.toFixed(1)} s{clip ? ` · clip ${clip.pos.toFixed(1)} of ${clip.dur.toFixed(1)} s` : ""}
+          {s.faults.map((f) => <b key={f} className="fault"> · injected fault: {f.replace("_", " ")}</b>)}
         </span>
       </h4>
 
@@ -55,7 +56,7 @@ export default function LiveData({ s, events }: { s: State; events: { key: strin
       </div>
 
       <p className="line">
-        Worst error so far: <b className="legacy">legacy {mm(s.score.legacy.max)} {unit()}</b> · <b className="so">Subsidium {mm(s.score.so.max)} {unit()}</b>
+        Worst error so far: <b className="legacy">legacy {mm(s.score.legacy.max)} {unit()} ({percent(s.score.legacy.max, s.truth).replace(/^[+−±]/, "")})</b> · <b className="so">Subsidium {mm(s.score.so.max)} {unit()} ({percent(s.score.so.max, s.truth).replace(/^[+−±]/, "")})</b>
       </p>
 
       {/* the engine's own announcements, newest first */}

@@ -41,7 +41,8 @@ export type ClipState = {
   truth: boolean; // false means tracking only: no altitude record, so nothing is voted on
   mm_per_m?: number | null;
   tau_gain: number;
-  camera?: "measured" | "reconstructed"; // reconstructed: there's no descent camera in this footage
+  camera?: "measured" | "reconstructed"; // reconstructed: there's no descent camera in this footage, so one is drawn
+  alt_view?: string | null; // a second picture to offer, like "Control center"
   believed?: boolean; // the altitude record is what the lander believed, not where it was
   pos: number;
   dur: number;

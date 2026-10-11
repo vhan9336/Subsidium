@@ -17,6 +17,7 @@ import numpy as np
 
 from ..config import ROOT
 from .base import Sample, Source
+from .sim import SimScene
 
 HOLD_S = 3.0          # sit on the last frame this long before looping
 MAX_WIDTH = 1024      # scale wider frames down before streaming them
@@ -79,6 +80,12 @@ class VideoSource(Source):
         self.offset_at = float(c.get("offset_at", 0.0))
         self.reconstructed_cam = c.get("camera") == "reconstructed"
         self.cam = (None, 0.0)                            # the made-up camera reading, when there's no camera
+        self.scene = None
+        if self.reconstructed_cam and c.get("site"):
+            # No descent camera was published, so draw one: the real LRO photo of the site, seen from the
+            # mission's true altitude. The broadcast stays available as a second view.
+            width_mm = float(c["site_width_m"]) * scale
+            self.scene = SimScene(f_px=390, out=(480, 360), mm_per_texel=width_mm / 1400, texture=str(ROOT / c["site"]), boulders=())
         self.tau_gain = float(c.get("tau_gain", 1.0))
         self.show_hazard = bool(c.get("hazard", True))
         self.h0 = self.truth.alt(self.start) if self.truth else 0.0
@@ -115,6 +122,7 @@ class VideoSource(Source):
         return {"id": c["id"], "name": c["name"], "mission": c.get("mission"), "credit": c.get("credit"),
                 "note": c.get("note"), "truth": self.truth is not None, "mm_per_m": c.get("mm_per_m"),
                 "camera": "reconstructed" if self.reconstructed_cam else "measured",
+                "alt_view": "Control center" if self.scene else None,
                 "believed": bool(c.get("believed")), "tau_gain": self.tau_gain,
                 "pos": round(self.pos - self.start, 1), "dur": round(self.end - self.start, 1)}
 
@@ -165,7 +173,10 @@ class VideoSource(Source):
             # Use the descent speed over the same 0.6 s the pipeline uses, so tau x v gives the altitude back
             rate = (self.truth.alt(self.pos - 0.6) - nav) / 0.6
             self.cam = (float(alt / rate * (1 + self.rng.normal(0, 0.02))), 0.9) if rate > 1.0 else (None, 0.0)
-        return Sample(self.t, self.frame, rf, steps, alt, self.playing and not self.ended, self.h0)
+        picture, alt_frame = self.frame, None
+        if self.scene is not None and alt is not None:
+            picture, alt_frame = self.scene.render(max(alt, 20.0)), self.frame
+        return Sample(self.t, picture, rf, steps, alt, self.playing and not self.ended, self.h0, alt_frame)
 
     def resync(self):
         self.wall = time.monotonic()

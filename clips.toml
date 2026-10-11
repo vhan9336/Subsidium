@@ -58,6 +58,8 @@ note = "Tracking only: NASA's replay is a time-lapse with uneven speed, so secon
 #   believed  true = the record is what the lander BELIEVED, not where it was; the true altitude
 #             is that plus offset_m from offset_at (seconds of video) onward
 #   camera    "reconstructed" = no vision: time-to-contact is computed from the true altitude
+#   site      with a reconstructed camera, the ground photo to draw the camera view over (the
+#             broadcast then becomes a second view), and site_width_m how many metres across it is
 
 [hakuto_r]
 name = "HAKUTO-R Mission 1"
@@ -75,11 +77,13 @@ believed = true
 offset_m = 5000     # ispace, 26 May 2023: the lander judged it had landed while about 5 km up
 offset_at = 133.0   # ASSUMED. ispace published the size of the error, not when in this video it began
 camera = "reconstructed"
+site = "scenarios/sites/hakuto_r_m1.jpg"
+site_width_m = 1000   # ASSUMED: LROC photos of these sites are about a kilometre across, but the scale bar was cropped away
 hazard = false
 replay_only = true
 # The broadcast badges its telemetry panel "UPDATE" for most of the clip and "simulation" near the
 # end, so the on-screen altitude is ispace's display of the descent, not guaranteed raw telemetry.
-note = "Red follows the altitude on ispace's own broadcast display (the broadcast marks that panel 'simulation' near the end). White is that plus the 5 km error ispace reported. Rangefinder and camera are reconstructed from the white line; when the error begins in this video is assumed."
+note = "Camera: simulated over NASA's LRO photo of the impact site, from the true altitude. The control-center broadcast is the second view. Red follows the altitude on ispace's own broadcast display (it marks that panel 'simulation' near the end). White is that plus the 5 km error ispace reported. Rangefinder is reconstructed from the white line; when the error begins is assumed."
 
 [resilience]
 name = "Resilience (Mission 2)"
@@ -93,6 +97,8 @@ truth = "eval/truth/resilience_broadcast.csv"
 fit = "linear"
 mm_per_m = 0.5
 camera = "reconstructed"
+site = "scenarios/sites/resilience.jpg"
+site_width_m = 1040   # from the site note: the LRO photo is 1040 m across
 hazard = false
 replay_only = true
-note = "White is the altitude on ispace's own broadcast display. Rangefinder, inertial and camera are reconstructed from it; the rangefinder lag is injected, its real size was not published."
+note = "Camera: simulated over NASA's LRO photo of the impact site. The control-center broadcast is the second view. White is the altitude on ispace's own broadcast display. Rangefinder and inertial are reconstructed from it; the rangefinder lag is injected, its real size was not published."

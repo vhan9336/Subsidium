@@ -7,6 +7,7 @@ import collections
 import json
 import queue
 
+import cv2
 import numpy as np
 
 from .config import ROOT
@@ -37,6 +38,7 @@ class Pipeline:
         self.moving_since = None
         self.last_t = None
         self.jpeg = b""
+        self.alt_jpeg = b""                   # the second view, when a source has one
         self.log = open(log_path, "a") if log_path else None
         self.reset_score()
 
@@ -183,6 +185,9 @@ class Pipeline:
         if self.log:
             self.log.write(json.dumps({k: val for k, val in state.items() if k != "hazard"}) + "\n")
         cam = self.cfg["camera"]
+        self.alt_jpeg = b""
+        if s.alt_frame is not None:
+            self.alt_jpeg = cv2.imencode(".jpg", s.alt_frame, [cv2.IMWRITE_JPEG_QUALITY, cam.get("jpeg_quality", 75)])[1].tobytes()
         self.jpeg = overlay.draw(s.frame, res, s.frame.shape[1] / self.ttc.width,
                                  self.src.show_hazard, cam.get("hazard_tint", 0.25), cam.get("jpeg_quality", 75))
         return state

@@ -102,13 +102,6 @@ h4 span { margin-left: 10px; font-weight: 400; font-size: 13px; color: var(--dim
 .tape-caret.so { left: 26px; border-right: 13px solid var(--so); border-left: 0; }
 .tape-caret b { position: absolute; top: -9px; font: 700 13px/18px var(--display); letter-spacing: 0.04em; white-space: nowrap; font-style: normal; text-shadow: 0 1px 3px #000, 0 0 2px #000; }
 .tape-caret.legacy b { right: 18px; color: var(--legacy); } .tape-caret.so b { left: 18px; color: var(--so); }
-/* a mission broadcast has its own graphics on the right, so the tape sits on the left of the picture */
-.view.broadcast.is-main img { object-position: right center; }
-.hud.broadcast .tape { right: auto; left: 132px; top: 96px; }
-.hud.broadcast .hud-source { display: none; }
-.hud.broadcast .hud-verdict { right: auto; left: 22px; text-align: left; padding: 4px 12px; background: rgba(0, 0, 0, 0.78); border-right: 0; border-left: 4px solid var(--faint); }
-.hud.broadcast .hud-verdict.good { border-color: var(--so); }
-.hud.broadcast .tape-tick, .hud.broadcast .tape-caret b { background: rgba(0, 0, 0, 0.55); padding: 0 4px; }
 .tape small { top: auto; bottom: -22px; right: 9px; font: 400 12px var(--body); color: var(--ink); text-shadow: 0 1px 3px #000; }
 
 /* labels inside the 3D view */
@@ -282,7 +275,6 @@ h4 span { margin-left: 10px; font-weight: 400; font-size: 13px; color: var(--dim
 .hud-legend { position: absolute; left: 22px; bottom: 14px; display: flex; align-items: center; gap: 8px; font: 600 12px var(--body); color: var(--ink); padding: 4px 10px; background: rgba(0, 0, 0, 0.7); }
 .hud-legend i { width: 54px; height: 8px; background: linear-gradient(90deg, rgb(0, 190, 40), rgb(255, 0, 40)); }
 .hud-legend b { font-weight: 400; color: var(--dim); } .hud-legend span { margin-left: 8px; }
-.hud.broadcast .hud-legend { display: none; }
 
 /* hazard grid table on the math screen */
 .proof section.wide { grid-column: span 2; }
@@ -307,3 +299,10 @@ h4 span { margin-left: 10px; font-weight: 400; font-size: 13px; color: var(--dim
 .canva-setup .bad { color: var(--legacy); }
 
 .bar .notice { color: var(--rf); font-weight: 600; }
+
+.three em span { display: block; font: 400 15px var(--body); color: var(--dim); margin-top: 2px; }
+.three .bad em span { color: var(--legacy); opacity: 0.8; }
+.proof .dim { color: var(--dim); }
+.livedata h4 .fault { color: var(--rf); font-weight: 600; margin-left: 0; }
+.toast { position: fixed; left: 50%; bottom: 96px; transform: translateX(-50%); z-index: 40; padding: 8px 16px; background: rgba(0, 0, 0, 0.82); border: 1px solid var(--rf); color: var(--rf); font-weight: 600; }
+.deck { column-gap: 28px; }
