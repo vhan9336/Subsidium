@@ -1,0 +1,38 @@
+# Second Opinion configuration. Tune the [sensors] block from real rig runs (tools/stats.py).
+
+[rig]
+spool_mm = 40.0            # winch spool diameter
+steps_per_rev = 4096       # 28BYJ-48 half-step
+baud = 115200
+
+[camera]
+index = 0
+width = 640
+height = 480
+lookback_s = 0.5           # frame gap for tau; raise if tau is noisy, lower if it lags
+grid = 6                   # hazard map tiles per side
+min_quality = 0.3          # below this the camera abstains (low texture / low contrast / dark)
+jpeg_quality = 90          # camera stream sent to the dashboard
+hazard_tint = 0.16         # strength of the hazard-map colour over the camera image (0 = off)
+
+[sensors]                  # 1-sigma noise models used by the integrity monitor
+rf_sigma_mm = 3.0          # rangefinder: fixed part
+rf_sigma_rel = 0.01        #              + 1% of range
+cam_sigma_rel = 0.04       # camera altitude (tau * v): relative error at full quality
+nav_sigma_mm = 3.0         # inertial / dead-reckoning altitude at anchor time
+nav_drift_mm_s = 1.0       # inertial drift growth (mm per second since last anchor)
+
+[monitor]
+window_s = 0.5             # test statistics are averaged over this window
+chi2_gate = 9.0            # mean normalised residual^2 above this = pair inconsistent (3 sigma)
+persist_s = 0.6            # an isolation must hold this long (longer than camera transients)
+
+[legacy]
+gate_mm = 30.0             # textbook innovation gate
+alpha = 0.3
+fail_after = 10            # consecutive rejections before the rangefinder is declared failed
+
+[faults]
+lag_s = 2.5                # Resilience-style degraded rangefinder: final lag
+lag_ramp_s = 4.0
+cam_bias = 1.35            # Athena-style camera misjudgement: tau multiplied by this

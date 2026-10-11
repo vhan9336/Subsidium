@@ -1,0 +1,9 @@
+id = "nominal"
+name = "Nominal descent"
+mission = "Baseline"
+summary = "All three witnesses agree. The hazard map picks a landing site away from the boulders."
+setup = "Flat ground under the lander."
+steps = [
+  { at = 0.0, do = ["fault:clear", "terrain_down", "reset"] },
+  { at = 0.5, do = ["descend"] },
+]

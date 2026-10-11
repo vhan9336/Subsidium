@@ -1,0 +1,16 @@
+flight_log.jsonl
+receipts.png
+eval_result*
+eval_selftest*
+footage/*
+!footage/SOURCES.md
+data/*
+!data/CATALOG.md
+sessions/*
+!sessions/.gitkeep
+__pycache__/
+*.pyc
+.venv/
+web/node_modules/
+web/dist/
+.pytest_cache/

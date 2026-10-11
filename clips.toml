@@ -1,0 +1,50 @@
+# Real footage for `python -m so serve --video [clip]`. Download the files listed in
+# footage/SOURCES.md (or run `python tools/fetch_data.py footage`). A clip only shows up if its
+# file is on disk.
+#
+#   view      [x, y, w, h] crop of the source frame that becomes the camera image
+#   start/end seconds of video
+#   every     use every n-th frame (30 fps footage -> every = 2)
+#   truth     altitude record (t, alt_m); without one the clip is tracking-only
+#   mm_per_m  rig scale for that altitude (the engine and dashboard work in mm)
+#   tau_gain  constant factor for a camera that is not pointing straight down
+#   hazard    false hides the hazard-map overlay (it assumes a straight-down camera)
+
+[blue_ghost]
+name = "Blue Ghost Mission 1"
+mission = "Firefly Aerospace · Moon, 2 March 2025 · NASA SCALPSS camera SFL2"
+credit = "NASA / Firefly Aerospace"
+file = "footage/blue_ghost_m1_landing_scalpss.mp4"
+view = [0, 424, 512, 344]
+start = 0.0
+end = 14.0          # the engine plume hides the surface after this
+truth = "eval/truth/blue_ghost_m1_callouts.csv"
+mm_per_m = 10
+# The SCALPSS cameras look outward, not straight down, so raw time-to-contact reads long.
+# 0.598 was fitted on the first 4 s only; eval/run_video.py --calib-s 4 scores the rest.
+tau_gain = 0.598
+hazard = false      # the hazard map assumes a straight-down view; this camera is oblique
+note = "Camera: real footage. Altitude: NASA's on-screen labels, 10 mm = 1 m. Rangefinder and inertial are generated from those labels."
+
+[perseverance]
+name = "Perseverance"
+mission = "NASA/JPL · Mars, 18 February 2021 · rover down-look camera"
+credit = "NASA/JPL-Caltech"
+file = "footage/perseverance_descent_touchdown_1080p.mp4"
+view = [424, 2, 1124, 896]
+start = 60.0
+end = 164.0         # rocket dust hides the ground after this
+every = 2
+hazard = false
+note = "Tracking only: this video has no altitude record, so nothing is voted on."
+
+[dart]
+name = "DART"
+mission = "NASA/Johns Hopkins APL · asteroid Dimorphos, 26 September 2022 · DRACO camera"
+credit = "NASA/Johns Hopkins APL"
+file = "footage/dart_impact_replay.mp4"
+view = [450, 0, 1020, 1020]
+start = 24.5
+end = 34.4          # last complete image before impact
+hazard = false
+note = "Tracking only: NASA's replay is a time-lapse with uneven speed, so seconds of video are not seconds of flight."

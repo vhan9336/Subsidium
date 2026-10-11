@@ -1,0 +1,12 @@
+# AI use (required by hackPHS rules)
+
+| What | Tool | Human changes |
+|---|---|---|
+| Initial engine (vision, integrity monitor, legacy gate, faults, sources, replay, server, scenarios), tests, eval harness, firmware draft, starter dashboard, MASTERPROMPT | Claude (AI assistant) | _fill in as you go_ |
+| Web dashboard rebuilt from the starter: `web/src/components/` (Scene3D, VoteTriangle, AltitudePlot, BrainCard, ScenarioPanel), `App.tsx`, `styles.css`, `theme.ts`. Engine and state contract unchanged. Checked against all five replays in the simulator. | Claude Code (Opus 5.5), 2026-10-10 | _fill in as you go_ |
+| Real-footage mode: `so/sources/video.py`, `clips.toml`, `--video` CLI flag, `/clips` endpoint, small pipeline hooks (tilt gain, `tau_raw`, clip info, stream quality), `tests/test_video.py`, `eval/run_video.py --calib-s`, `tools/fetch_data.py`, `data/CATALOG.md`, dashboard camera/3D swap and clip picker. AI also located and downloaded the NASA footage and maps, and read the Blue Ghost altitude labels off the video frames into `eval/truth/blue_ghost_m1_callouts.csv`. | Claude Code (Opus 5.5), 2026-10-10 | _fill in as you go; spot-check the altitude labels against the video_ |
+| Real crash data in the replays: located and downloaded NASA LRO images of the four actual impact/landing sites and the landing minutes of the four mission broadcasts; `tools/fetch_data.py sites` / `broadcasts`; per-scenario `site` and `broadcast` fields; simulator texture switching; dashboard broadcast view with verdict overlay. | Claude Code (Opus 5.5), 2026-10-10 | _fill in as you go_ |
+| Dashboard redesign after user feedback (flat instrument layout that fits one screen, `Lanes.tsx` altitude chart, plain-English status lines, one large view with thumbnails, `CameraFeed.tsx` frame polling plus `/frame.jpg`). | Claude Code (Opus 5.5), 2026-10-10 | _fill in as you go_ |
+
+| Mission replays on real Moon footage: `so/sources/hybrid.py` (footage where a replay can run on it, simulator where it needs a moving ground), `footage` flag in scenario files, replay restarts when the clip loops, `FootageHud.tsx` software layer over the camera image, three new tests in `tests/test_video.py`. | Claude Code (Opus 5.5), 2026-10-10 | _fill in as you go_ |
+Add a row whenever an AI assistant writes or substantially changes code, and note what you reviewed, tested or rewrote.

@@ -1,0 +1,20 @@
+id = "hakuto_r_m1"
+name = "HAKUTO-R Mission 1"
+mission = "ispace · April 2023"
+summary = "Passing a ~3 km crater rim, the measured altitude rose sharply. The software judged the correct reading abnormal and filtered it out; the lander believed it was on the surface while ~5 km up, ran out of propellant and fell."
+source = "ispace press release, 26 May 2023; HAKUTO-R Mission 1 debriefing"
+setup = "Start with the plateau UNDER the lander."
+expect = "Legacy declares the rangefinder failed and believes it is lower than it is. Second Opinion: camera + rangefinder outvote the inertial estimate (terrain change)."
+site = "scenarios/sites/hakuto_r_m1.jpg"
+site_note = "Ground: NASA LRO image M1437131607R of the actual impact site, taken the day after (47.58°N, 44.09°E). Credit NASA/GSFC/Arizona State University."
+broadcast = "footage/broadcasts/hakuto_r_m1.mp4"
+broadcast_at = 140
+broadcast_note = "ispace's own landing broadcast, 25 April 2023. Its display counts the altitude down to zero; ispace later reported the lander was still about 5 km up. Footage © ispace."
+# Needs the ground to move under the lander, which recorded footage cannot do, so with
+# `serve --video` this replay flies on the simulator.
+footage = false
+steps = [
+  { at = 0.0, do = ["fault:clear", "terrain_up", "reset"] },
+  { at = 0.5, do = ["descend"] },
+  { at = 4.0, do = ["terrain_down"], cue = "SLIDE THE PLATEAU OUT NOW" },
+]

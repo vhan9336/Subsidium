@@ -1,0 +1,17 @@
+id = "odysseus_im1"
+name = "Odysseus (IM-1)"
+mission = "Intuitive Machines · February 2024"
+summary = "The laser rangefinders never fired: a safety-enable switch had not been disabled before launch. The team switched to an experimental NASA lidar in flight; the lander touched down with sideways speed and tipped over."
+source = "SpaceQ; New Atlas; Intuitive Machines briefings, Feb 2024"
+setup = "Flat ground under the lander."
+expect = "Rangefinder silent from the start. Second Opinion keeps a cross-checked altitude from inertial + camera instead of trusting inertial alone."
+site = "scenarios/sites/odysseus_im1.jpg"
+site_note = "Ground: NASA LRO image M1463440322L of the actual landing site with Odysseus on it (80.13°S, 1.44°E), 973 m across. Credit NASA/GSFC/Arizona State University."
+broadcast = "footage/broadcasts/odysseus_im1.mp4"
+broadcast_at = 120
+broadcast_note = "NASA's official broadcast of the IM-1 landing, 22 February 2024: mission control and the landing simulation in the minutes before touchdown. Credit NASA / Intuitive Machines."
+steps = [
+  { at = 0.0, do = ["fault:clear", "terrain_down", "reset"] },
+  { at = 0.2, do = ["fault:rf_drop"], cue = "Rangefinder never armed" },
+  { at = 0.5, do = ["descend"] },
+]

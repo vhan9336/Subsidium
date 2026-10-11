@@ -1,0 +1,6 @@
+opencv-python>=4.8
+numpy
+fastapi
+uvicorn[standard]
+pyserial
+matplotlib
