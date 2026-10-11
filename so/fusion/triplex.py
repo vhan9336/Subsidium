@@ -45,7 +45,8 @@ class TriplexMonitor:
         self.cam_rel = s["cam_sigma_rel"]
         self.nav_sigma, self.nav_drift = s["nav_sigma_mm"], s["nav_drift_mm_s"]
         self.window, self.gate, self.persist = m["window_s"], m["chi2_gate"], m["persist_s"]
-        self.smooth_gain = m["smooth_gain"]
+        self.smooth_gain, self.evidence_gate = m["smooth_gain"], m["evidence_gate"]
+        self.cam_memory = cfg["camera"]["lookback_s"]    # how long a camera reading stays correlated with the last one
         self.min_quality = cfg["camera"]["min_quality"]
         self.reset()
 
@@ -58,6 +59,8 @@ class TriplexMonitor:
         self.cam_seen = False
         self.hist = collections.deque()          # (time, {pair: r2}) over the averaging window
         self.mode_changed = False
+        self.evidence = 0.0                      # camera's running case for "inertial is wrong" (+) or "rangefinder is wrong" (-)
+        self.last_t = None
         self.cand, self.cand_t = None, 0.0       # the verdict we're waiting to confirm, and since when
         self.smoothed = None                     # the filtered estimate, and the inertial reading it was last carried on from
         self.prev_nav = None
@@ -126,12 +129,37 @@ class TriplexMonitor:
                 events.append("cam_abstain" if self.cam_abstain else ("cam_back" if self.cam_seen else "cam_lock"))
             self.cam_seen = self.cam_seen or cam_ok
 
+    def weigh_camera(self, r2: dict, nav_rf_bad: bool, t: float):
+        """Builds up the camera's case when inertial and the rangefinder disagree.
+
+        A noisy camera can't settle a disagreement in one look: it's only a little nearer to the
+        right answer than the wrong one. But each look adds a little evidence, so we keep a running
+        total. Positive means the camera sits closer to the rangefinder (inertial is wrong),
+        negative means closer to inertial (the rangefinder is wrong).
+        """
+        dt = 0.0 if self.last_t is None else t - self.last_t
+        self.last_t = t
+        if nav_rf_bad and ("nav", "cam") in r2 and ("rf", "cam") in r2:
+            # readings from one moment to the next aren't independent, so count a look as worth dt / cam_memory
+            self.evidence += 0.5 * (r2[("nav", "cam")] - r2[("rf", "cam")]) * dt / self.cam_memory
+            limit = 2 * self.evidence_gate
+            self.evidence = max(-limit, min(limit, self.evidence))
+        elif not nav_rf_bad:
+            self.evidence = 0.0
+
     def candidate(self, w: dict, bad: dict, have: dict):
         """Today's verdict from the pair tests, or None to keep the current one."""
         if "rf" not in w:
             return "RF_LOST"
         if all(have.values()):
             nr, nc, rc = bad[("nav", "rf")], bad[("nav", "cam")], bad[("rf", "cam")]
+            if (nr, nc, rc) == (1, 0, 0):
+                # inertial and the rangefinder disagree and the camera is too noisy to take a side outright
+                if self.evidence > self.evidence_gate:
+                    return "NAV"
+                if self.evidence < -self.evidence_gate:
+                    return "RF"
+                return None
             return {(0, 0, 0): "NOMINAL", (1, 1, 0): "NAV", (1, 0, 1): "RF",
                     (0, 1, 1): "CAM", (1, 1, 1): "UNRESOLVED"}.get((nr, nc, rc))   # one failing pair: still unfolding
         if have[("nav", "rf")]:       # camera sitting out: we can see a disagreement but not blame anyone
@@ -154,6 +182,7 @@ class TriplexMonitor:
         stats = self.pair_stats(x.t)
         bad = {p: int(v is not None and v > self.gate) for p, v in stats.items()}
         have = {p: v is not None for p, v in stats.items()}
+        self.weigh_camera(r2, bad[("nav", "rf")], x.t)
 
         cand = self.candidate(w, bad, have)
         mode_before = self.mode
@@ -167,6 +196,7 @@ class TriplexMonitor:
                 self.offset += fused - w["nav"][0]
                 self.t_anchor = x.t
                 self.hist.clear()
+                self.evidence = 0.0
                 self.smoothed = None
                 w["nav"] = (fused, self.nav_sigma)
                 self.mode = "NOMINAL"

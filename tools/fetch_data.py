@@ -149,14 +149,19 @@ BROADCASTS = {
 
 
 def broadcasts() -> bool:
-    """Needs two extra packages that are not in requirements.txt: pip install yt-dlp imageio-ffmpeg"""
+    """Needs yt-dlp, which isn't in requirements.txt (pip install yt-dlp). It also needs ffmpeg:
+    the one on your PATH if there is one, otherwise imageio-ffmpeg's copy (pip install imageio-ffmpeg)."""
+    import shutil
     import subprocess
 
+    ffmpeg = shutil.which("ffmpeg")
     try:
-        import imageio_ffmpeg
         import yt_dlp  # noqa: F401
+        if not ffmpeg:
+            import imageio_ffmpeg
+            ffmpeg = imageio_ffmpeg.get_ffmpeg_exe()
     except ImportError:
-        print("broadcasts need: pip install yt-dlp imageio-ffmpeg")
+        print("broadcasts need yt-dlp and ffmpeg: pip install yt-dlp imageio-ffmpeg")
         return False
     ok = True
     for sid, (vid, a, b) in BROADCASTS.items():
@@ -165,7 +170,7 @@ def broadcasts() -> bool:
             print(f"{sid}: already on disk")
             continue
         r = subprocess.run([sys.executable, "-m", "yt_dlp", "-q", "--no-warnings", "--no-part",
-                            "--ffmpeg-location", imageio_ffmpeg.get_ffmpeg_exe(),
+                            "--ffmpeg-location", ffmpeg,
                             "--download-sections", f"*{a}-{b}", "-f", "136/298/135/134",
                             "-o", str(out), f"https://www.youtube.com/watch?v={vid}"])
         print(f"{sid}: {'ok' if r.returncode == 0 and out.exists() else 'FAILED'}")

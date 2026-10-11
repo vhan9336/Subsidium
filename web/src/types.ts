@@ -85,6 +85,9 @@ export type Playback = {
   t1: number;
 };
 
+/** One entry in the list of footage clips from /clips (only with `serve --video`). */
+export type ClipInfo = { id: string; name: string; truth: boolean };
+
 /** One entry in the list of replays from /scenarios. */
 export type ScenarioInfo = {
   id: string;

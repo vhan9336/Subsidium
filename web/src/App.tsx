@@ -2,13 +2,14 @@ import { useEffect, useRef, useState } from "react";
 import CameraFeed from "./components/CameraFeed";
 import Explain from "./components/Explain";
 import FootageHud from "./components/FootageHud";
+import LiveData from "./components/LiveData";
 import Playback, { stepCommand } from "./components/Playback";
 import Proof from "./components/Proof";
 import ScenarioPanel from "./components/ScenarioPanel";
 import Scene3D from "./components/Scene3D";
 import { cmd, useTelemetry } from "./telemetry";
 import { ERR_BAD_MM, EVENT_LABEL, mm, plainStatus, setUnit, signed, timeToContact, unit } from "./theme";
-import type { ScenarioInfo, State } from "./types";
+import type { ClipInfo, ScenarioInfo, State } from "./types";
 import { voice } from "./voice";
 
 type Logged = { key: string; t: number };
@@ -77,6 +78,7 @@ function contactLine(altitude: number | null, truth: number | null, speed: numbe
 export default function App() {
   const [log, setLog] = useState<Logged[]>([]); // recent events, which the headline reads
   const [scenarios, setScenarios] = useState<ScenarioInfo[]>([]);
+  const [clips, setClips] = useState<ClipInfo[]>([]);
   const [voiceOn, setVoiceOn] = useState(false);
   const [picked, setPicked] = useState<View | null>(null); // the view the user chose to enlarge
   const [proof, setProof] = useState(false);
@@ -88,6 +90,7 @@ export default function App() {
 
   useEffect(() => {
     fetch("/scenarios").then((r) => r.json()).then(setScenarios).catch(() => {});
+    fetch("/clips").then((r) => r.json()).then(setClips).catch(() => {});
   }, [connected]);
 
   const clip = s?.clip ?? null;
@@ -112,12 +115,16 @@ export default function App() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.ctrlKey || e.metaKey || e.altKey || e.repeat) return;
+      if ((e.target as HTMLElement).closest?.("input, textarea")) return; // typing in a box isn't a shortcut
       const k = e.key.toLowerCase();
       const { scenarios, swapViews, playback } = latest.current;
       if (k === "v") setVoiceOn(voice.toggle());
       else if (k === " " && playback) cmd(playback.paused ? "resume" : "pause");
       else if ((k === "arrowleft" || k === "arrowright") && playback) cmd(stepCommand(playback, k === "arrowleft" ? -1 : 1));
-      else if (k === "e") setExplain(true);
+      else if (k === "e") {
+        e.preventDefault(); // or the box that opens would receive this keystroke
+        setExplain(true);
+      }
       else if (k === "m") setProof((p) => !p);
       else if (k === "escape") setProof(false);
       else if (k === "c") swapViews();
@@ -172,12 +179,14 @@ export default function App() {
             <aside className="right">
               <p className="mission">
                 {sc ? <><b>{sc.name}</b> {sc.mission}</> : clip ? <><b>{clip.name}</b> {clip.mission}</>
-                  : <>Press <b>1</b> to <b>{Math.max(scenarios.length, 1)}</b> to replay a landing through both brains. Press <b>E</b> for a slide walkthrough.</>}
+                  : <>Press <b>1</b> to <b>{Math.max(scenarios.length, 1)}</b> to replay a landing through both brains. Press <b>E</b> for the presentation.</>}
               </p>
               <h2 className={tone}>{line}</h2>
               <p className="then">{consequence(legacyErr, soErr)}</p>
               {/* a cue is an instruction for whoever is working the physical rig */}
               {sc?.cue && s.kind === "live" && <p className="cue">{sc.cue}</p>}
+
+              <LiveData s={s} events={log} />
 
               <dl className="three">
                 <div className="k-truth">
@@ -223,7 +232,7 @@ export default function App() {
         </main>
       )}
 
-      <ScenarioPanel s={s} scenarios={scenarios} voiceOn={voiceOn} onVoice={() => setVoiceOn(voice.toggle())}
+      <ScenarioPanel s={s} scenarios={scenarios} clips={clips} voiceOn={voiceOn} onVoice={() => setVoiceOn(voice.toggle())}
         proof={proof} onProof={() => setProof((p) => !p)} onExplain={() => setExplain(true)} />
       {explain && <Explain onClose={() => setExplain(false)} />}
     </div>

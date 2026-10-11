@@ -10,7 +10,7 @@
   GET  /scenarios     the mission replays
   GET  /clips         real-footage clips (only with `serve --video`)
   GET  /proof         the tuned settings and a scorecard of every replay, for the math screen
-  GET  /slides.json   the slide files in order. The files themselves are under /slides/
+  GET  /presentation.json   the Canva link for the walkthrough, from config.toml (can be empty)
 """
 import asyncio
 import collections
@@ -65,7 +65,7 @@ def create_app(pipe: Pipeline) -> FastAPI:
 
     # static files: built web assets, voice clips, and the images the dashboard shows
     folders = {"assets": WEB / "assets", "textures": WEB / "textures",
-               "audio": ROOT / "web" / "public" / "audio", "slides": ROOT / "slides",
+               "audio": ROOT / "web" / "public" / "audio",
                "sites": ROOT / "scenarios" / "sites", "broadcasts": ROOT / "footage" / "broadcasts"}
     for name, folder in folders.items():
         if folder.exists():
@@ -77,10 +77,9 @@ def create_app(pipe: Pipeline) -> FastAPI:
             return FileResponse(WEB / "index.html")
         return PlainTextResponse("The web app isn't built yet. Run: cd web && npm install && npm run build")
 
-    @app.get("/slides.json")
-    def slide_list():
-        # a leading underscore hides a slide (see slides/README.md)
-        return sorted(f.name for f in (ROOT / "slides").glob("*.html") if not f.name.startswith("_"))
+    @app.get("/presentation.json")
+    def presentation():
+        return {"url": pipe.cfg.get("presentation", {}).get("canva_url", "")}
 
     @app.get("/scenarios")
     def scenarios():

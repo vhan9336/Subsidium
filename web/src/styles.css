@@ -206,20 +206,20 @@ h4 span { margin-left: 10px; font-weight: 400; font-size: 13px; color: var(--dim
 .tracking p { color: var(--dim); max-width: 52ch; }
 
 /* ---- bottom: missions, then the manual controls, quieter ---- */
-.deck { border-top: 1px solid var(--rule); padding-bottom: 12px; display: grid; grid-template-columns: 1fr auto; align-items: center; }
+.deck { border-top: 1px solid var(--rule); padding-bottom: 12px; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
 .deck .manual { grid-column: 1 / -1; }
 .deck .math { font: 600 16px var(--display); color: var(--dim); padding: 6px 0; } .deck .math:hover, .deck .math.on { color: var(--ink); }
 .deck .math i { font-style: normal; margin-left: 6px; padding: 1px 6px; border: 1px solid var(--rule); color: var(--dim); }
-.missions { display: flex; flex-wrap: wrap; gap: 0 30px; }
-.missions button { display: grid; grid-template-columns: auto auto; column-gap: 10px; align-items: baseline; padding: 11px 0 8px; margin-top: -1px; border-top: 3px solid transparent; color: var(--dim); }
+.missions { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0 22px; min-width: 0; }
+.missions button { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 10px; align-items: baseline; padding: 11px 0 8px; margin-top: -1px; border-top: 3px solid transparent; color: var(--dim); min-width: 0; }
 .missions button:hover { color: var(--ink); }
 .missions button.on { color: var(--ink); border-color: var(--ink); }
 .missions i { font: 400 15px var(--display); font-style: normal; color: var(--faint); }
-.missions span { font: 600 20px/1.1 var(--display); }
-.missions small { grid-column: 2; font-size: 12px; color: var(--faint); }
-.missions em { font-style: normal; margin-left: 8px; color: var(--dim); }
+.missions span { font: 600 18px/1.1 var(--display); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.missions small { grid-column: 2; font-size: 12px; color: var(--faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.missions em { font-style: normal; margin-left: 5px; color: var(--dim); }
 .missions em::before { content: "· "; }
-.manual { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 20px; padding-top: 4px; font-size: 13px; color: var(--dim); }
+.deck .manual { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 20px; padding-top: 4px; font-size: 13px; color: var(--dim); }
 .manual .label { color: var(--faint); }
 .manual .label:not(:first-child) { margin-left: 14px; }
 .manual .spacer { flex: 1; }
@@ -247,21 +247,6 @@ h4 span { margin-left: 10px; font-weight: 400; font-size: 13px; color: var(--dim
   .lanes .marker, .view.is-thumb, .tape > * { transition: none; }
 }
 
-/* ---- walkthrough slides (E): html files from slides/, scaled to fit ---- */
-.deck .tools { display: flex; gap: 26px; justify-self: end; }
-.explain { position: fixed; inset: 0; z-index: 50; background: var(--bg); display: grid; grid-template-rows: auto minmax(0, 1fr) auto; padding: 0 var(--gutter) 18px; }
-.explain-top { display: flex; justify-content: space-between; align-items: baseline; padding: 14px 0 11px; border-bottom: 1px solid var(--rule); color: var(--dim); }
-.explain-top i { font-style: normal; margin-left: 6px; padding: 1px 6px; border: 1px solid var(--rule); color: var(--dim); }
-.stage-box { position: relative; min-height: 0; margin: 14px 0; }
-.stage-box.empty { display: grid; place-items: center; color: var(--dim); }
-.stage-box iframe { position: absolute; left: 50%; top: 50%; border: 0; transform-origin: center; background: var(--bg); }
-.explain-nav { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 24px; border-top: 1px solid var(--rule); padding-top: 14px; }
-.explain-nav > button { font: 600 16px var(--display); color: var(--ink); padding: 6px 4px; }
-.explain-nav > button:disabled { color: var(--faint); cursor: default; }
-.progress { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
-.progress button { width: 28px; height: 4px; background: var(--rule); }
-.progress button.on { background: var(--so); }
-
 /* ---- playback bar under the picture ---- */
 .playback { display: flex; align-items: center; gap: 10px; font-size: 14px; color: var(--dim); }
 .playback .icon { width: 30px; height: 30px; padding: 6px; border-radius: 50%; color: var(--dim); transition: color 0.12s, background 0.12s; }
@@ -272,3 +257,43 @@ h4 span { margin-left: 10px; font-weight: 400; font-size: 13px; color: var(--dim
 .playback .icon.big svg { fill: currentColor; }
 .playback input { flex: 1; margin-left: 6px; accent-color: var(--so); }
 .playback .clock { min-width: 8.5em; text-align: right; font-variant-numeric: tabular-nums; }
+
+/* ---- live data panel on the main screen ---- */
+.livedata { margin-top: 4px; padding-top: 6px; border-top: 1px solid var(--rule); font-size: 12px; color: var(--dim); }
+.livedata h4 { margin-bottom: 2px; font-size: 13px; }
+.livedata table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.livedata td { padding: 1px 8px 1px 0; }
+.livedata td:first-child { font-weight: 600; }
+.livedata tr.nav td:first-child { color: var(--nav); } .livedata tr.rf td:first-child { color: var(--rf); } .livedata tr.cam td:first-child { color: var(--cam); }
+.livedata tr td:nth-child(2), .livedata tr td:nth-child(3) { color: var(--ink); }
+.livedata tr.off td { color: var(--off); } .livedata tr.off td:first-child { text-decoration: line-through; }
+.livedata .line { margin: 3px 0 0; color: var(--dim); font-variant-numeric: tabular-nums; }
+.livedata b.legacy { color: var(--legacy); font-weight: 600; } .livedata b.so { color: var(--so); font-weight: 600; }
+.livedata .pairs { display: flex; flex-wrap: wrap; gap: 0 14px; margin-top: 3px; }
+.livedata .pairs span b { font-weight: 600; margin-left: 3px; }
+.livedata .pairs .pass b { color: var(--so); } .livedata .pairs .fail b { color: var(--legacy); } .livedata .pairs .none b { color: var(--off); }
+.livedata .events { list-style: none; margin: 3px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 0 14px; color: var(--ink); }
+.livedata .events time { color: var(--faint); font-variant-numeric: tabular-nums; margin-right: 3px; }
+.three dt span { font-size: 13px; }
+
+/* footage picker, under the mission replays */
+.clips { grid-column: 1; display: flex; align-items: baseline; gap: 18px; padding: 2px 0 6px; font-size: 13px; color: var(--faint); }
+.clips button { color: var(--dim); padding-bottom: 2px; border-bottom: 2px solid transparent; }
+.clips button:hover { color: var(--ink); } .clips button.on { color: var(--ink); border-color: var(--ink); }
+.livedata .events { list-style: none; margin: 5px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 2px 14px; font-size: 12px; color: var(--ink); }
+.livedata .events time { color: var(--faint); font-variant-numeric: tabular-nums; margin-right: 3px; }
+
+/* ---- presentation (E): a Canva design in an iframe ---- */
+.explain { position: fixed; inset: 0; z-index: 50; background: var(--bg); display: grid; grid-template-rows: auto minmax(0, 1fr); padding: 0 var(--gutter) 14px; }
+.explain-top { display: flex; justify-content: space-between; align-items: baseline; padding: 14px 0 11px; border-bottom: 1px solid var(--rule); color: var(--dim); }
+.explain-top button { color: var(--dim); } .explain-top button:hover { color: var(--ink); }
+.explain-top i { font-style: normal; margin-left: 6px; padding: 1px 6px; border: 1px solid var(--rule); }
+.canva { width: 100%; height: 100%; margin-top: 12px; border: 0; background: #000; }
+.canva-setup { align-self: center; justify-self: center; width: min(640px, 100%); display: grid; gap: 14px; }
+.canva-setup h2 { font: 600 30px/1.15 var(--display); }
+.canva-setup p { color: var(--dim); }
+.canva-setup input { width: 100%; padding: 10px 12px; font: 15px var(--body); color: var(--ink); background: transparent; border: 1px solid var(--rule); }
+.canva-setup input:focus { outline: 2px solid var(--cam); outline-offset: 2px; }
+.canva-setup button { justify-self: start; padding: 8px 18px; font: 600 16px var(--display); color: #06140b; background: var(--so); }
+.canva-setup .bad { color: var(--legacy); }
+.deck .tools { grid-column: 2; grid-row: 1 / span 2; display: flex; gap: 26px; justify-self: end; align-self: center; }

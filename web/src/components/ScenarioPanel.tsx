@@ -1,6 +1,6 @@
 // Bottom bar: the mission replays (keys 1-5) and, quieter, the manual rig and fault controls.
 import { cmd } from "../telemetry";
-import type { ScenarioInfo, State } from "../types";
+import type { ClipInfo, ScenarioInfo, State } from "../types";
 
 const MOTION: [string, string, string][] = [
   ["D", "Descend", "descend"],
@@ -18,9 +18,10 @@ const FAULTS: [string, string][] = [
   ["cam_blind", "Camera blind"],
 ];
 
-export default function ScenarioPanel({ s, scenarios, voiceOn, onVoice, proof, onProof, onExplain }: {
+export default function ScenarioPanel({ s, scenarios, clips, voiceOn, onVoice, proof, onProof, onExplain }: {
   s: State | null;
   scenarios: ScenarioInfo[];
+  clips: ClipInfo[];
   voiceOn: boolean;
   onVoice: () => void;
   proof: boolean;
@@ -36,12 +37,24 @@ export default function ScenarioPanel({ s, scenarios, voiceOn, onVoice, proof, o
           <button key={sc.id} className={active?.id === sc.id ? "on" : ""} onClick={() => cmd(`scenario:${sc.id}`)}>
             <i>{i + 1}</i>
             <span>{sc.name}</span>
-            <small>{sc.mission}{mixed && <em>{sc.clip ? "real broadcast" : sc.footage ? "real footage" : "simulator"}</em>}</small>
+            <small>{sc.mission?.split(" · ").pop()}{mixed && <em>{sc.clip ? "real broadcast" : sc.footage ? "real footage" : "simulator"}</em>}</small>
           </button>
         ))}
       </nav>
+      {/* with real footage loaded, a clip with no replay of its own can be picked here */}
+      {clips.length > 1 && (
+        <nav className="clips" aria-label="Footage">
+          <span>Footage</span>
+          {clips.map((c) => (
+            <button key={c.id} className={s?.clip?.id === c.id ? "on" : ""} onClick={() => cmd(`clip:${c.id}`)}
+              title={c.truth ? "Has an altitude record, so all three witnesses run" : "No altitude record: camera tracking only"}>
+              {c.name}
+            </button>
+          ))}
+        </nav>
+      )}
       <span className="tools">
-        <button className="math" onClick={onExplain}>Walkthrough <i>E</i></button>
+        <button className="math" onClick={onExplain}>Presentation <i>E</i></button>
         <button className={`math ${proof ? "on" : ""}`} onClick={onProof}>{proof ? "Back to the landing" : "The math"} <i>M</i></button>
       </span>
       {proof && <div className="manual">

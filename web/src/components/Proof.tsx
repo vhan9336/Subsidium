@@ -2,6 +2,7 @@
 // test each pair of sensors goes through, the rule that picks the odd one out, the legacy
 // gate's rule beside it, and where each number on screen comes from. It's the answer to "prove it".
 import { useEffect, useState, type MutableRefObject } from "react";
+import { NAME, SENSORS, origin, type Sensor } from "../readings";
 import { mm, signed, timeToContact, unit } from "../theme";
 import type { State } from "../types";
 import AltitudePlot from "./AltitudePlot";
@@ -18,9 +19,6 @@ type Config = {
 };
 type ProofData = { config: Config; scorecard: ScoreRow[] | null };
 
-const NAME = { nav: "Inertial", rf: "Rangefinder", cam: "Camera" } as const;
-type Sensor = keyof typeof NAME;
-const SENSORS = Object.keys(NAME) as Sensor[];
 const PAIRS: [Sensor, Sensor][] = [["nav", "rf"], ["nav", "cam"], ["rf", "cam"]];
 
 // What the vote does for each pattern of failing pairs. The row matching the engine's status lights up.
@@ -38,16 +36,6 @@ const seconds = (altitude: number | null, speed: number) => {
   const t = timeToContact(altitude, speed);
   return t == null ? "—" : `${t.toFixed(1)} s`;
 };
-
-/** Says where a sensor's reading came from: the rig, the simulator, or a clip. */
-function origin(s: State, sensor: Sensor): string {
-  const clip = s.clip;
-  if (s.kind === "live") return "measured on the rig";
-  if (!clip) return "simulated";
-  if (sensor === "cam") return clip.camera === "reconstructed" ? "reconstructed from the true altitude" : "measured from the footage";
-  if (clip.believed) return sensor === "nav" ? "the altitude on the broadcast display" : "reconstructed from the true altitude";
-  return "generated from the on-screen altitude record";
-}
 
 /** Loads the settings and the all-replays scorecard. The scorecard takes a few seconds, so keep asking until it arrives. */
 function useProof() {

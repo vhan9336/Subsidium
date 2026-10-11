@@ -19,13 +19,13 @@ cd web && npm install && npm run build && cd ..
 python -m so serve --sim                                 # then open http://localhost:8000
 ```
 
-Press 1 to 5 to run a replay: Nominal, HAKUTO-R M1, Resilience, Odysseus, Athena. The bar under the picture restarts the replay, pauses it and scrubs back through the last minute. Press M for the math behind the verdict and E for a slide walkthrough.
+Press 1 to 5 to run a replay: Nominal, HAKUTO-R M1, Resilience, Odysseus, Athena. The bar under the picture restarts the replay, pauses it and scrubs back through the last minute. Press M for the math behind the verdict and E for the presentation.
 
 | Key | Does |
 |---|---|
 | 1 to 5 | Run a mission replay |
 | M | Show or hide the math screen |
-| E | Open the slide walkthrough (slides live in `slides/`) |
+| E | Open the Canva presentation (set `canva_url` in `config.toml`, or paste the link the first time) |
 | Space | Pause or resume the run |
 | Left, right | Step back or forward one second (this pauses the run) |
 | C | Swap the camera and 3D views |
@@ -82,7 +82,6 @@ python -m so serve --port COM3          # or /dev/tty.usbmodem101
 | `so/` | The engine: camera vision, the voting monitor, the legacy gate, fault injection, sources, server |
 | `web/` | The dashboard (React, three.js) |
 | `scenarios/`, `clips.toml` | The five replays and the real-footage clips |
-| `slides/` | The walkthrough slides, one HTML file each |
 | `tests/`, `eval/`, `tools/` | Tests, camera scoring, data downloads |
 | `config.toml` | Every tunable setting, with the noise models |
 | `docs/AI_USE.md` | How AI was used in this project |

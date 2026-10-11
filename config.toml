@@ -26,12 +26,16 @@ nav_drift_mm_s = 1.0       # inertial drift growth (mm per second since last anc
 window_s = 0.5             # test statistics are averaged over this window
 chi2_gate = 9.0            # mean normalised residual^2 above this = pair inconsistent (3 sigma)
 persist_s = 0.6            # an isolation must hold this long (longer than camera transients)
+evidence_gate = 4.6        # the camera must build up this much evidence (ln 100, so 100 to 1) to settle an inertial-versus-rangefinder disagreement
 smooth_gain = 0.3          # how far the estimate moves toward each new fused reading (the rest is carried on by inertial)
 
 [legacy]
 gate_mm = 30.0             # textbook innovation gate
 alpha = 0.3
 fail_after = 10            # consecutive rejections before the rangefinder is declared failed
+
+[presentation]
+canva_url = ""             # Canva embed link for the walkthrough (press E). Or paste it into the page once
 
 [faults]
 lag_s = 2.5                # Resilience-style degraded rangefinder: final lag
