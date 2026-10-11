@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import CameraFeed from "./components/CameraFeed";
 import Explain from "./components/Explain";
 import FootageHud from "./components/FootageHud";
+import Playback from "./components/Playback";
 import Proof from "./components/Proof";
 import ScenarioPanel from "./components/ScenarioPanel";
 import Scene3D from "./components/Scene3D";
@@ -91,14 +92,20 @@ export default function App() {
   useEffect(() => setPicked(null), [s?.kind]); // footage and simulator each lead with their own view
 
   // The key handler is set up once, so it reads the latest values through this ref.
-  const latest = useRef({ scenarios, swapViews });
-  latest.current = { scenarios, swapViews };
+  const latest = useRef({ scenarios, swapViews, playback: s?.playback });
+  latest.current = { scenarios, swapViews, playback: s?.playback };
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.ctrlKey || e.metaKey || e.altKey || e.repeat) return;
       const k = e.key.toLowerCase();
-      const { scenarios, swapViews } = latest.current;
+      const { scenarios, swapViews, playback } = latest.current;
       if (k === "v") setVoiceOn(voice.toggle());
+      else if (k === " " && playback) cmd(playback.paused ? "resume" : "pause");
+      else if ((k === "arrowleft" || k === "arrowright") && playback) {
+        // one second per press: the server saves a varying number of moments per second, so work out how many
+        const perSecond = Math.round(playback.n / Math.max(playback.t1 - playback.t0, 1));
+        cmd(`seek:${playback.cursor + (k === "arrowleft" ? -perSecond : perSecond)}`);
+      }
       else if (k === "e") setExplain(true);
       else if (k === "m") setProof((p) => !p);
       else if (k === "escape") setProof(false);
@@ -114,8 +121,10 @@ export default function App() {
 
   const legacyErr = s?.truth != null && s.legacy.est != null ? s.legacy.est - s.truth : null;
   const soErr = s?.truth != null && s.so.est != null ? s.so.est - s.truth : null;
-  const reanchored = !!s && log.some((e) => e.key === "terrain_change" && s.t - e.t < 4); // for the vote triangle
-  const [line, tone] = s && voting ? headline(s, log) : ["", "idle" as Tone];
+  const reanchored = !!s && log.some((e) => e.key === "terrain_change" && s.t >= e.t && s.t - e.t < 4); // for the vote triangle
+  // when scrubbing, only count events that had already happened at the moment on screen
+  const seen = s ? log.filter((e) => e.t <= s.t) : log;
+  const [line, tone] = s && voting ? headline(s, seen) : ["", "idle" as Tone];
   const badClass = (err: number | null) => (Math.abs(err ?? 0) > ERR_BAD_MM ? "bad" : "");
 
   return (
@@ -136,7 +145,7 @@ export default function App() {
               {/* both views stay mounted. C or a click on the thumbnail swaps which one is large */}
               <figure className={`view ${place("cam")} ${rebuilt ? "broadcast" : ""}`} onClick={() => setPicked("cam")}>
                 <CameraFeed alt="Downward camera" />
-                {voting && <FootageHud s={s} verdict={verdict(s, log)} tone={tone} />}
+                {voting && <FootageHud s={s} verdict={verdict(s, seen)} tone={tone} />}
                 <figcaption>{VIEW_NAME.cam}</figcaption>
               </figure>
               <figure className={`view scene ${place("3d")}`} hidden={!views.includes("3d")} onClick={() => main !== "3d" && setPicked("3d")}>
@@ -144,6 +153,7 @@ export default function App() {
                 <figcaption>{VIEW_NAME["3d"]}</figcaption>
               </figure>
             </div>
+            <Playback s={s} />
           </section>
 
           {voting ? (

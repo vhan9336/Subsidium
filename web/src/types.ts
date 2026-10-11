@@ -73,6 +73,16 @@ export type State = {
   scenario: ScenarioState | null;
   events: string[];
   score: { legacy: Score; so: Score };
+  playback: Playback;
+};
+
+/** Where the run is in its recorded history. The server keeps about a minute so you can scrub back through it. */
+export type Playback = {
+  paused: boolean;
+  n: number; // how many moments are saved
+  cursor: number; // which one is on screen (the last one when live)
+  t0: number; // the time of the first and last saved moment, in seconds
+  t1: number;
 };
 
 /** One entry in the list of replays from /scenarios. */

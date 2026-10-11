@@ -19,13 +19,15 @@ cd web && npm install && npm run build && cd ..
 python -m so serve --sim                                 # then open http://localhost:8000
 ```
 
-Press 1 to 5 to run a replay: Nominal, HAKUTO-R M1, Resilience, Odysseus, Athena. Press M for the math behind the verdict and E for a slide walkthrough.
+Press 1 to 5 to run a replay: Nominal, HAKUTO-R M1, Resilience, Odysseus, Athena. The bar under the picture restarts the replay, pauses it and scrubs back through the last minute. Press M for the math behind the verdict and E for a slide walkthrough.
 
 | Key | Does |
 |---|---|
 | 1 to 5 | Run a mission replay |
 | M | Show or hide the math screen |
 | E | Open the slide walkthrough (slides live in `slides/`) |
+| Space | Pause or resume the run |
+| Left, right | Step back or forward one second (this pauses the run) |
 | C | Swap the camera and 3D views |
 | V | Voice callouts on or off |
 | D, S, U, R | Descend, stop, up, reset |

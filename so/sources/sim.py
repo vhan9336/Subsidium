@@ -103,6 +103,10 @@ class SimSource(Source):
         elif name.startswith("texture:"):          # fly over a different ground photo ("" = back to the default)
             self.scene.tex = load_texture(name[8:]) if name[8:] else self.default_tex
 
+    def resync(self):
+        if self.realtime:
+            self.t = time.monotonic()
+
     def read(self) -> Sample:
         dt = 1.0 / self.fps
         if self.realtime:

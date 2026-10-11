@@ -64,6 +64,13 @@ class Pipeline:
             self.faults.set(name[6:], t)
         elif name.startswith("scenario:"):
             self.start_scenario(name[9:], t)
+        elif name == "restart":
+            # run the current replay again from the top, or just reset if none is running
+            sid = self.runner.spec["id"] if self.runner.spec else None
+            self.apply("reset", t, record=False)
+            self.faults.clear()
+            if sid:
+                self.start_scenario(sid, t)
         elif name == "reset":
             self.src.command("reset")
             for part in (self.ttc, self.legacy, self.so):

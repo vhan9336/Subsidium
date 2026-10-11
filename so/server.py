@@ -5,13 +5,16 @@
   GET  /frame.jpg     the latest camera frame, with the overlay drawn on
   GET  /video         the same frames as an MJPEG stream
   POST /cmd/{name}    descend | stop | up | reset | terrain_up | terrain_down | fault:<name or clear> |
-                      scenario:<id or stop> | record_start | record_stop | clip:<id>
+                      scenario:<id or stop> | record_start | record_stop | clip:<id> |
+                      pause | resume | restart | seek:<n>   (playback: seek scrubs back through the last minute)
   GET  /scenarios     the mission replays
   GET  /clips         real-footage clips (only with `serve --video`)
   GET  /proof         the tuned settings and a scorecard of every replay, for the math screen
   GET  /slides.json   the slide files in order. The files themselves are under /slides/
 """
 import asyncio
+import collections
+import copy
 import datetime
 import json
 import threading
@@ -26,20 +29,34 @@ from .pipeline import Pipeline
 
 WEB = ROOT / "web" / "dist"
 FPS = 15       # how often the browser gets an update
+HISTORY = 900  # states and frames kept for scrubbing: about a minute at 15 per second
 
 
 def create_app(pipe: Pipeline) -> FastAPI:
     app = FastAPI(title="Subsidium")
-    shared = {"state": {}, "events": [], "jpeg": b""}   # the latest tick, shared with the request threads
+    shared = {"state": {}, "events": [], "jpeg": b"", "paused": False, "cursor": None}
     lock = threading.Lock()
+    # Every other tick is kept as a (state, frame) pair, so the dashboard can scrub back through the run.
+    history = collections.deque(maxlen=HISTORY)
 
     def fly():
+        ticks = 0
         while True:
+            if shared["paused"]:
+                time.sleep(0.05)
+                continue
             st = pipe.tick()
             if st is None:                       # a replay ended, or the camera hiccuped
                 time.sleep(0.05)
                 continue
             with lock:
+                if history and st["t"] < history[-1][0]["t"]:
+                    history.clear()              # time went backwards, so a replay or clip looped
+                    shared["cursor"] = None
+                ticks += 1
+                if ticks % 2 == 0:
+                    # the score dict is reused every tick, so keep a copy of what it said at this moment
+                    history.append(({**st, "score": copy.deepcopy(st["score"])}, pipe.jpeg))
                 shared["state"], shared["jpeg"] = st, pipe.jpeg
                 shared["events"].extend(st["events"])
                 del shared["events"][:-200]
@@ -102,9 +119,27 @@ def create_app(pipe: Pipeline) -> FastAPI:
                            "camera": {k: c["camera"][k] for k in ("lookback_s", "min_quality")}},
                 "scorecard": scorecard["rows"]}
 
+    def playback(name: str):
+        """Pause, resume, restart and seek. These act on the server's loop, not on the engine."""
+        with lock:
+            if name == "pause":
+                shared["paused"] = True
+            elif name.startswith("seek:") and history:
+                shared["paused"] = True          # scrubbing freezes the run where it is
+                shared["cursor"] = min(max(int(name[5:]), 0), len(history) - 1)
+            else:                                # resume or restart: go live again
+                shared["cursor"] = None
+                pipe.src.resync()                # so the time spent paused isn't counted
+                if name == "restart":
+                    history.clear()
+                    pipe.command("restart")
+                shared["paused"] = False
+
     @app.post("/cmd/{name}")
     def cmd(name: str):
-        if name == "record_start":
+        if name in ("pause", "resume", "restart") or name.startswith("seek:"):
+            playback(name)
+        elif name == "record_start":
             pipe.start_recording(str(ROOT / "sessions" / datetime.datetime.now().strftime("%Y%m%d-%H%M%S")))
         else:
             pipe.command(name)
@@ -112,7 +147,7 @@ def create_app(pipe: Pipeline) -> FastAPI:
 
     def latest_jpeg() -> bytes:
         with lock:
-            return shared["jpeg"]
+            return history[shared["cursor"]][1] if shared["cursor"] is not None else shared["jpeg"]
 
     @app.get("/frame.jpg")
     def frame():
@@ -138,11 +173,16 @@ def create_app(pipe: Pipeline) -> FastAPI:
         try:
             while True:
                 with lock:
-                    st = dict(shared["state"])
+                    cursor = shared["cursor"]
                     events = shared["events"]
                     new, seen = events[min(seen, len(events)):], len(events)
-                if st:
-                    st["events"] = new
+                    st = dict(history[cursor][0] if cursor is not None else shared["state"])
+                    st["playback"] = {"paused": shared["paused"], "n": len(history),
+                                      "cursor": len(history) - 1 if cursor is None else cursor,
+                                      "t0": history[0][0]["t"] if history else st.get("t", 0),
+                                      "t1": history[-1][0]["t"] if history else st.get("t", 0)}
+                if st.get("t") is not None:
+                    st["events"] = [] if cursor is not None else new    # scrubbing mustn't replay old callouts
                     await sock.send_text(json.dumps(st))
                 await asyncio.sleep(1 / FPS)
         except WebSocketDisconnect:

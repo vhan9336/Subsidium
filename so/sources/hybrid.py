@@ -47,6 +47,9 @@ class HybridSource(Source):
         if new is self.sim and self.sim.realtime:
             self.sim.t = time.monotonic()        # the simulator's clock stood still while it was idle
 
+    def resync(self):
+        self.cur.resync()
+
     def command(self, name: str):
         if name.startswith("texture:"):
             self.sim.command(name)

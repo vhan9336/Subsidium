@@ -167,5 +167,8 @@ class VideoSource(Source):
             self.cam = (float(alt / rate * (1 + self.rng.normal(0, 0.02))), 0.9) if rate > 1.0 else (None, 0.0)
         return Sample(self.t, self.frame, rf, steps, alt, self.playing and not self.ended, self.h0)
 
+    def resync(self):
+        self.wall = time.monotonic()
+
     def close(self):
         self.cap.release()

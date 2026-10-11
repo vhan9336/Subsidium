@@ -39,5 +39,8 @@ class Source:
     def info(self) -> dict | None:
         return None
 
+    def resync(self) -> None:
+        """Called after a pause so the source's clock doesn't count the time spent paused."""
+
     def close(self) -> None:
         pass

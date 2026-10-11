@@ -64,6 +64,11 @@ class ReplaySource(Source):
         self.i = self.ci = 0                       # next sample, next command
         self.wall0 = time.monotonic()
 
+    def resync(self):
+        # pretend playback has been running the whole time, so it carries on from where it paused
+        done = self.rows[max(self.i - 1, 0)]["t"] - self.rows[0]["t"]
+        self.wall0 = time.monotonic() - done
+
     def due_commands(self, t: float) -> list[str]:
         """Commands recorded up to time t. The pipeline re-applies them."""
         out = []
