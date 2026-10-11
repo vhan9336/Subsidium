@@ -8,7 +8,7 @@ export const SENSORS = Object.keys(NAME) as Sensor[];
 /** Says where a sensor's reading came from: the rig, the simulator, or a clip. */
 export function origin(s: State, sensor: Sensor): string {
   const clip = s.clip;
-  if (s.kind === "live") return "measured on the rig";
+  if (s.kind === "live") return sensor === "nav" ? "servo angle, or the ultrasonic's own trend with no motor" : "measured on the rig";
   if (!clip) return "simulated";
   if (sensor === "cam") return clip.camera === "reconstructed" ? "reconstructed from the true altitude" : "measured from the footage";
   if (clip.believed) return sensor === "nav" ? "the altitude on the broadcast display" : "reconstructed from the true altitude";

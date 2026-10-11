@@ -33,14 +33,14 @@ def build_source(args, cfg, mm_per_step):
         if args.rig:                           # J switches to this
             from .sources.live import LiveSource
             cam = cfg["camera"]
-            rig = LiveSource(args.rig, cfg["rig"]["mm_per_tenth"], camera_choice(args, cfg), cam["width"], cam["height"], cfg["rig"]["baud"])
+            rig = LiveSource(args.rig, cfg["rig"]["mm_per_tenth"], camera_choice(args, cfg), cam["width"], cam["height"], cfg["rig"]["baud"], cfg["rig"]["motor"])
         return HybridSource(VideoSource(mm_per_step, args.video or None), SimSource(mm_per_step, render=(480, 360)), rig)
     if args.replay:
         from .sources.replay import ReplaySource
         return ReplaySource(args.replay, loop=True)
     from .sources.live import LiveSource
     cam = cfg["camera"]
-    return LiveSource(args.port, cfg["rig"]["mm_per_tenth"], camera_choice(args, cfg), cam["width"], cam["height"], cfg["rig"]["baud"])
+    return LiveSource(args.port, cfg["rig"]["mm_per_tenth"], camera_choice(args, cfg), cam["width"], cam["height"], cfg["rig"]["baud"], cfg["rig"]["motor"])
 
 
 def main():

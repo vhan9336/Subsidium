@@ -4,6 +4,7 @@
 spool_mm = 40.0            # winch spool diameter
 steps_per_rev = 4096       # 28BYJ-48 half-step
 baud = 115200
+motor = false              # false: the ultrasonic-only rig (firmware/ultrasonic). The sensor and webcam are moved by hand, so inertial and speed are derived from the ultrasonic. true: the servo winch (firmware/rig)
 mm_per_tenth = 0.1         # servo rig: mm of sled travel per tenth of a degree (the Arduino sketch assumes about 1 mm per degree). Measure it: command A600 and see how far the sled drops
 
 [camera]

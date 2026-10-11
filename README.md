@@ -90,6 +90,8 @@ Press **J** to switch to the rig, and J again to come back. While it's live:
 
 The fault buttons (rangefinder lag, freeze, silent, camera bias, camera blind) corrupt the live readings in software, so you can break a real sensor on cue. The altitude each brain is scored against is the raw ultrasonic reading.
 
+The ultrasonic-only sketch (`firmware/ultrasonic/ultrasonic.ino`, no motor) works too: `rig.motor = false` in `config.toml` is the default. Lower the sensor and webcam by hand while you run it. D, U and X do nothing, because there is nothing to move, and the inertial reading and speed are derived from the ultrasonic. For the servo winch set `motor = true`.
+
 Set `rig.mm_per_tenth` in `config.toml` to the millimetres of sled travel per tenth of a degree. The sketch assumes about 1 mm per degree, which is 0.1.
 
 To try the whole thing with nothing plugged in, run the pretend Arduino and point a video file at it as the webcam:

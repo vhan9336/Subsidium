@@ -58,3 +58,22 @@ def test_engine_cut_jumps_to_the_bottom_and_reset_comes_back(rig):
     source.command("reset")
     read_for(source, 5.0)
     assert source.read().steps <= 5
+
+
+def test_without_a_motor_the_steps_follow_the_ultrasonic(tmp_path):
+    fake = FakeRig(motor=False)                           # the Arduino always reports 0 for the angle
+    video = str(tmp_path / "cam.mp4")
+    scene, writer = SimScene(), cv2.VideoWriter(video, cv2.VideoWriter_fourcc(*"mp4v"), 30, (320, 240))
+    for k in range(60):
+        writer.write(scene.render(300 - k))
+    writer.release()
+    source = LiveSource(fake.port, MM_PER_TENTH, video, motor=False)
+    try:
+        read_for(source, 1.5)
+        source.command("descend")                          # the fake sensor sees the floor come closer
+        samples = read_for(source, 3.0)
+        assert samples[-1].steps > 100 and samples[-1].rf_raw < samples[0].rf_raw - 15
+        assert any(s.descending for s in samples)
+    finally:
+        source.close()
+        fake.stop.set()

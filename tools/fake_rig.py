@@ -1,6 +1,6 @@
 """A pretend Arduino, so the live rig code can be tried with nothing plugged in.
 
-  python tools/fake_rig.py            prints a port name, like /dev/pts/7
+  python tools/fake_rig.py            prints a port name, like /dev/pts/7 (add --no-motor to mimic the ultrasonic-only sketch)
   python -m so serve --video --rig /dev/pts/7 --cam footage/blue_ghost_m1_landing_scalpss.mp4
 
 It talks the same serial protocol as firmware/rig/rig.ino: it prints R,<ms>,<range_mm>,<angle_tenths>
@@ -21,7 +21,8 @@ MAX_TENTHS = 1800
 
 
 class FakeRig:
-    def __init__(self):
+    def __init__(self, motor: bool = True):
+        self.motor = motor                       # False: report angle 0 always, like firmware/ultrasonic
         self.master, slave = os.openpty()
         self.port = os.ttyname(slave)
         self._slave = slave                      # keep it open, or reads on the other end would fail
@@ -84,12 +85,13 @@ class FakeRig:
                 last_ping = now
                 alt = self.altitude()
                 self.range_mm = round(alt + random.gauss(0, 1.0)) if alt > 20 else -1
-                os.write(self.master, f"R,{int(now * 1000)},{self.range_mm},{int(self.pos)}\r\n".encode())
+                os.write(self.master, f"R,{int(now * 1000)},{self.range_mm},{int(self.pos) if self.motor else 0}\r\n".encode())
             time.sleep(0.005)
 
 
 if __name__ == "__main__":
-    rig = FakeRig()
+    import sys
+    rig = FakeRig(motor="--no-motor" not in sys.argv)
     print(rig.port, flush=True)
     try:
         while True:

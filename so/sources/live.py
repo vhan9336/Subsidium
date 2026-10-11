@@ -40,8 +40,10 @@ def find_serial_port() -> str:
 class LiveSource(Source):
     kind = "live"
 
-    def __init__(self, port: str, mm_per_step: float, cam=0, width: int = 640, height: int = 480, baud: int = 115200):
+    def __init__(self, port: str, mm_per_step: float, cam=0, width: int = 640, height: int = 480, baud: int = 115200,
+                 motor: bool = True):
         self.mm_per_step = mm_per_step                 # here a "step" is one tenth of a degree of servo
+        self.motor = motor                             # False: nothing turns, so we make the steps up (see read)
         self.ser = serial.Serial(find_serial_port() if port == "auto" else port, baud, timeout=0.1)
         self.cap = cv2.VideoCapture(cam)               # a camera number, or a video file to test with
         self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, width)
@@ -115,6 +117,11 @@ class LiveSource(Source):
             recent = list(self.recent_rf)[-10:]
         if self.calibrating and d["steps"] <= 5 and len(recent) >= 5:
             self.h0, self.calibrating = statistics.median(recent), False
+        if not self.motor:
+            # No motor, so the Arduino always says 0. The sensor is moved by hand, so the inertial reading
+            # and the descent speed are the ultrasonic's own smoothed trend. They aren't independent of it,
+            # but injected faults corrupt the rangefinder after this point, so the vote still has something to catch.
+            d["steps"] = 0 if self.h0 is None or not recent else round((self.h0 - statistics.median(recent[-5:])) / self.mm_per_step)
         return Sample(now, frame, d["rf"], d["steps"], None, self.moving_down(now, d["steps"]), self.h0)
 
     def close(self):
