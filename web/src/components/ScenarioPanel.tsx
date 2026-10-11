@@ -7,8 +7,8 @@ const MOTION: [string, string, string][] = [
   ["S", "Stop", "stop"],
   ["U", "Up", "up"],
   ["R", "Reset", "reset"],
-  ["T", "Plateau in", "terrain_up"],
-  ["Y", "Plateau out", "terrain_down"],
+  ["T", "Plateau in", "terrain_up"],   // slides the 60 mm plateau under the lander
+  ["Y", "Plateau out", "terrain_down"], // and takes it away again
 ];
 const FAULTS: [string, string][] = [
   ["rf_lag", "Rangefinder lag"],

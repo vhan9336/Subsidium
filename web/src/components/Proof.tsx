@@ -1,64 +1,75 @@
-// Everything behind the verdict, live: the readings, the test each pair of sensors goes through,
-// the rule that picks the odd one out, the legacy gate's rule beside it, and where every number
-// on screen comes from. Opened with M when someone says "prove it".
+// The math screen (press M): every number behind the verdict, live. It has the readings, the
+// test each pair of sensors goes through, the rule that picks the odd one out, the legacy
+// gate's rule beside it, and where each number on screen comes from. It's the answer to "prove it".
 import { useEffect, useState, type MutableRefObject } from "react";
+import { mm, signed, unit } from "../theme";
+import type { State } from "../types";
 import AltitudePlot from "./AltitudePlot";
 import Lanes from "./Lanes";
 import VoteTriangle from "./VoteTriangle";
-import { mm, signed, unit } from "../theme";
-import type { State } from "../types";
 
-type Row = { id: string; legacy_max: number; legacy_last: number; so_max: number; so_last: number; ok: boolean; events: string[] };
-type ProofData = {
-  config: {
-    sensors: { rf_sigma_mm: number; rf_sigma_rel: number; cam_sigma_rel: number; nav_sigma_mm: number; nav_drift_mm_s: number };
-    monitor: { window_s: number; chi2_gate: number; persist_s: number };
-    legacy: { gate_mm: number; alpha: number; fail_after: number };
-    faults: { lag_s: number; lag_ramp_s: number; cam_bias: number };
-    camera: { lookback_s: number; min_quality: number };
-  };
-  scorecard: Row[] | null;
+type ScoreRow = { id: string; legacy_max: number; legacy_last: number; so_max: number; so_last: number; ok: boolean };
+// the tuned settings from config.toml, as /proof sends them
+type Config = {
+  sensors: { rf_sigma_mm: number; rf_sigma_rel: number; cam_sigma_rel: number; nav_sigma_mm: number; nav_drift_mm_s: number };
+  monitor: { window_s: number; chi2_gate: number; persist_s: number };
+  legacy: { gate_mm: number; alpha: number; fail_after: number };
+  camera: { lookback_s: number; min_quality: number };
 };
+type ProofData = { config: Config; scorecard: ScoreRow[] | null };
 
 const NAME = { nav: "Inertial", rf: "Rangefinder", cam: "Camera" } as const;
-const PAIRS = [["nav", "rf"], ["nav", "cam"], ["rf", "cam"]] as const;
-const RULES: [string, string, (st: string) => boolean][] = [
-  ["all three pairs agree", "all agree: fuse all three", (st) => st.startsWith("NOMINAL")],
-  ["inertial fails with both others, rangefinder and camera agree", "inertial is wrong (the ground changed): re-anchor it", () => false],
-  ["rangefinder fails with both others, inertial and camera agree", "rangefinder is wrong: exclude it", (st) => st.startsWith("RANGEFINDER EXCLUDED")],
-  ["camera fails with both others, inertial and rangefinder agree", "camera is wrong: exclude it", (st) => st.startsWith("CAMERA EXCLUDED")],
-  ["all three pairs fail", "cannot tell: assume the closest ground", (st) => st.startsWith("UNRESOLVED")],
-  ["rangefinder gives no echo", "check inertial against the camera", (st) => st.startsWith("RANGEFINDER SILENT")],
+type Sensor = keyof typeof NAME;
+const SENSORS = Object.keys(NAME) as Sensor[];
+const PAIRS: [Sensor, Sensor][] = [["nav", "rf"], ["nav", "cam"], ["rf", "cam"]];
+
+// What the vote does for each pattern of failing pairs. The row matching the engine's status lights up.
+const RULES: { when: string; then: string; active: (status: string) => boolean }[] = [
+  { when: "all three pairs agree", then: "all agree: fuse all three", active: (st) => st.startsWith("NOMINAL") },
+  { when: "inertial fails with both others, rangefinder and camera agree", then: "inertial is wrong (the ground changed): re-anchor it", active: () => false },
+  { when: "rangefinder fails with both others, inertial and camera agree", then: "rangefinder is wrong: exclude it", active: (st) => st.startsWith("RANGEFINDER EXCLUDED") },
+  { when: "camera fails with both others, inertial and rangefinder agree", then: "camera is wrong: exclude it", active: (st) => st.startsWith("CAMERA EXCLUDED") },
+  { when: "all three pairs fail", then: "cannot tell: assume the closest ground", active: (st) => st.startsWith("UNRESOLVED") },
+  { when: "rangefinder gives no echo", then: "check inertial against the camera", active: (st) => st.startsWith("RANGEFINDER SILENT") },
 ];
 
-function origin(s: State, k: keyof typeof NAME): string {
-  const c = s.clip;
+/** Says where a sensor's reading came from: the rig, the simulator, or a clip. */
+function origin(s: State, sensor: Sensor): string {
+  const clip = s.clip;
   if (s.kind === "live") return "measured on the rig";
-  if (!c) return "simulated";
-  if (k === "cam") return c.camera === "reconstructed" ? "reconstructed from the true altitude" : "measured from the footage";
-  if (c.believed) return k === "nav" ? "the altitude on the broadcast display" : "reconstructed from the true altitude";
+  if (!clip) return "simulated";
+  if (sensor === "cam") return clip.camera === "reconstructed" ? "reconstructed from the true altitude" : "measured from the footage";
+  if (clip.believed) return sensor === "nav" ? "the altitude on the broadcast display" : "reconstructed from the true altitude";
   return "generated from the on-screen altitude record";
 }
 
-export default function Proof({ s, history, reanchored }: { s: State; history: MutableRefObject<State[]>; reanchored: boolean }) {
+/** Loads the settings and the all-replays scorecard. The scorecard takes a few seconds, so keep asking until it arrives. */
+function useProof() {
   const [data, setData] = useState<ProofData | null>(null);
   useEffect(() => {
-    let live = true;
+    let alive = true;
     let timer = 0;
     const load = () => fetch("/proof").then((r) => r.json()).then((d: ProofData) => {
-      if (!live) return;
+      if (!alive) return;
       setData(d);
-      if (!d.scorecard) timer = window.setTimeout(load, 2000); // the scorecard is computed on first request
+      if (!d.scorecard) timer = window.setTimeout(load, 2000);
     }).catch(() => {});
     load();
-    return () => { live = false; clearTimeout(timer); };
+    return () => {
+      alive = false;
+      clearTimeout(timer);
+    };
   }, []);
+  return data;
+}
 
+export default function Proof({ s, history, reanchored }: { s: State; history: MutableRefObject<State[]>; reanchored: boolean }) {
+  const data = useProof();
   const cfg = data?.config;
-  const w = s.so.witness;
+  const witness = s.so.witness;
   const scale = s.clip?.mm_per_m;
-  const err = (e: number | null) => (s.truth == null || e == null ? null : e - s.truth);
-  const camH = s.tau != null ? s.tau * s.v : null;
+  const errorOf = (est: number | null) => (s.truth == null || est == null ? null : est - s.truth);
+  const camAltitude = s.tau != null ? s.tau * s.v : null;
 
   return (
     <main className="proof">
@@ -67,16 +78,17 @@ export default function Proof({ s, history, reanchored }: { s: State; history: M
         <div><h4>The vote <span>how strongly each pair disagrees</span></h4><VoteTriangle so={s.so} reanchored={reanchored} /></div>
         <div><h4>Last 20 seconds <span>{unit()}</span></h4><AltitudePlot history={history} tick={s.t} /></div>
       </section>
+
       <section>
         <h4>1. What each sensor says <span>{unit()}</span></h4>
         <table>
           <thead><tr><th>Sensor</th><th>Reads</th><th>± 1σ</th><th>Where the reading comes from</th></tr></thead>
           <tbody>
-            {(Object.keys(NAME) as (keyof typeof NAME)[]).map((k) => (
+            {SENSORS.map((k) => (
               <tr key={k} className={s.so.excluded.includes(k) ? "out" : ""}>
                 <td className={k}>{NAME[k]}</td>
-                <td>{w[k] ? mm(w[k]!.h) : "—"}</td>
-                <td>{w[k] ? mm(w[k]!.sigma) : "—"}</td>
+                <td>{witness[k] ? mm(witness[k]!.h) : "—"}</td>
+                <td>{witness[k] ? mm(witness[k]!.sigma) : "—"}</td>
                 <td>{origin(s, k)}</td>
               </tr>
             ))}
@@ -95,7 +107,7 @@ export default function Proof({ s, history, reanchored }: { s: State; history: M
         <h4>2. Camera altitude</h4>
         <p className="eq">
           h<sub>cam</sub> = τ × v = {s.tau == null ? "—" : `${s.tau.toFixed(2)} s`} × {(s.v / (scale ?? 1)).toFixed(1)} {unit()}/s
-          = <b>{mm(camH)}</b> {unit()}
+          = <b>{mm(camAltitude)}</b> {unit()}
         </p>
         <p className="fine">
           τ is the time to contact, read from how fast the image grows between two frames {cfg?.camera.lookback_s ?? "—"} s apart:
@@ -114,15 +126,16 @@ export default function Proof({ s, history, reanchored }: { s: State; history: M
           <thead><tr><th>Pair</th><th>Apart by</th><th>r², averaged</th><th>Limit</th><th /></tr></thead>
           <tbody>
             {PAIRS.map(([a, b]) => {
-              const r = s.so.pairs[`${a}-${b}` as keyof typeof s.so.pairs];
-              const gap = w[a] && w[b] ? Math.abs(w[a]!.h - w[b]!.h) : null;
+              const r2 = s.so.pairs[`${a}-${b}` as keyof typeof s.so.pairs];
+              const gap = witness[a] && witness[b] ? Math.abs(witness[a]!.h - witness[b]!.h) : null;
+              const verdict = r2 == null ? "" : r2 > s.so.gate ? "fail" : "pass";
               return (
                 <tr key={a + b}>
                   <td>{NAME[a]} vs {NAME[b]}</td>
                   <td>{mm(gap)}</td>
-                  <td>{r == null ? "no test" : r.toFixed(2)}</td>
+                  <td>{r2 == null ? "no test" : r2.toFixed(2)}</td>
                   <td>{s.so.gate.toFixed(1)}</td>
-                  <td className={r == null ? "" : r > s.so.gate ? "fail" : "pass"}>{r == null ? "" : r > s.so.gate ? "FAIL" : "pass"}</td>
+                  <td className={verdict}>{verdict.toUpperCase()}</td>
                 </tr>
               );
             })}
@@ -137,8 +150,8 @@ export default function Proof({ s, history, reanchored }: { s: State; history: M
         <h4>4. Who is the odd one out? <span>the sensor that is in both failing pairs</span></h4>
         <table className="rules">
           <tbody>
-            {RULES.map(([when, then, on]) => (
-              <tr key={when} className={on(s.so.status) ? "now" : ""}><td>{when}</td><td>{then}</td></tr>
+            {RULES.map((rule) => (
+              <tr key={rule.when} className={rule.active(s.so.status) ? "now" : ""}><td>{rule.when}</td><td>{rule.then}</td></tr>
             ))}
           </tbody>
         </table>
@@ -149,15 +162,16 @@ export default function Proof({ s, history, reanchored }: { s: State; history: M
         <h4>5. The legacy gate, on the same readings</h4>
         {cfg && (
           <p className="fine">
-            Follow inertial. Accept the rangefinder only if it is within {cfg.legacy.gate_mm} mm of that; then move {cfg.legacy.alpha * 100}% toward it.
-            After {cfg.legacy.fail_after} rejections in a row, declare the rangefinder failed and never listen to it again. It has no third opinion to check against.
+            Follow inertial. Accept the rangefinder only if it is within {cfg.legacy.gate_mm} mm of that, then move {cfg.legacy.alpha * 100}% toward it.
+            After {cfg.legacy.fail_after} rejections in a row, declare the rangefinder failed and never listen to it again.
+            It has no third opinion to check against.
           </p>
         )}
         <table>
           <thead><tr><th /><th>Believes</th><th>Off truth</th><th>Worst</th><th>Status</th></tr></thead>
           <tbody>
-            <tr><td className="legacy">Legacy gate</td><td>{mm(s.legacy.est)}</td><td>{signed(err(s.legacy.est))}</td><td>{mm(s.score.legacy.max)}</td><td>{s.legacy.status}</td></tr>
-            <tr><td className="so">Subsidium</td><td>{mm(s.so.est)}</td><td>{signed(err(s.so.est))}</td><td>{mm(s.score.so.max)}</td><td>± {mm(s.so.sigma)}</td></tr>
+            <tr><td className="legacy">Legacy gate</td><td>{mm(s.legacy.est)}</td><td>{signed(errorOf(s.legacy.est))}</td><td>{mm(s.score.legacy.max)}</td><td>{s.legacy.status}</td></tr>
+            <tr><td className="so">Subsidium</td><td>{mm(s.so.est)}</td><td>{signed(errorOf(s.so.est))}</td><td>{mm(s.score.so.max)}</td><td>± {mm(s.so.sigma)}</td></tr>
           </tbody>
         </table>
 
@@ -184,7 +198,7 @@ export default function Proof({ s, history, reanchored }: { s: State; history: M
           {s.clip && <li>Footage: {s.clip.mission}. {s.clip.credit}.</li>}
           {s.scenario?.summary && <li>{s.scenario.summary}</li>}
           {s.faults.length > 0 && <li>Injected into the sensor stream: {s.faults.join(", ").replace(/_/g, " ")}.</li>}
-          {!s.clip && <li>Simulated rig: every reading is generated, the true altitude is known exactly.</li>}
+          {!s.clip && <li>Simulated rig: every reading is generated, and the true altitude is known exactly.</li>}
         </ul>
       </section>
     </main>
