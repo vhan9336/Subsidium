@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Second Opinion</title>
+<title>Subsidium</title>
 <style>
   :root{
     --bg:#0b0d10; --panel:#12161b; --line:#232a32; --ink:#e8ecf1; --dim:#8893a0;
@@ -50,16 +50,16 @@
 </head>
 <body>
 <header>
-  <h1>SECOND OPINION</h1>
+  <h1>SUBSIDIUM</h1>
   <span class="sub">Camera time-to-contact as an independent altitude witness</span>
-  <div class="chips"><span class="chip" id="mode">—</span><span class="chip" id="fault">no fault</span><span class="chip" id="voice">voice off — press any key</span></div>
+  <div class="chips"><span class="chip" id="mode">—</span><span class="chip" id="fault">no fault</span><span class="chip" id="voice">voice off, press any key</span></div>
 </header>
 <main>
   <section class="panel cam"><img id="cam" src="/video" alt="downward camera"><span class="tag">Downward camera · hazard map · tracked features</span></section>
   <section>
     <div class="brains">
       <div class="panel brain legacy"><h2>Legacy gate</h2><div class="alt" id="le">—<small>mm</small></div><div class="err" id="lerr">&nbsp;</div><div class="status" id="lst">—</div></div>
-      <div class="panel brain so"><h2>Second Opinion</h2><div class="alt" id="se">—<small>mm</small></div><div class="err" id="serr">&nbsp;</div><div class="status" id="sst">—</div></div>
+      <div class="panel brain so"><h2>Subsidium</h2><div class="alt" id="se">—<small>mm</small></div><div class="err" id="serr">&nbsp;</div><div class="status" id="sst">—</div></div>
     </div>
     <div class="verdict" id="verdict">&nbsp;</div>
     <div class="readouts">
@@ -75,7 +75,7 @@
     <div class="legend">
       <span><i style="background:var(--truth)"></i>true</span><span><i style="background:var(--rf)"></i>rangefinder (as received)</span>
       <span><i style="background:var(--nav)"></i>navigation</span><span><i style="background:var(--vis)"></i>camera</span>
-      <span><i style="background:var(--legacy)"></i>legacy belief</span><span><i style="background:var(--so)"></i>second opinion belief</span>
+      <span><i style="background:var(--legacy)"></i>legacy belief</span><span><i style="background:var(--so)"></i>Subsidium belief</span>
     </div>
   </section>
   <section class="controls">
@@ -100,10 +100,10 @@ const LINES = {
   recovered: "All three sources agree again.",
 };
 const VERDICT = {
-  terrain_change: ["Real terrain change — camera backs the rangefinder", "good"],
+  terrain_change: ["Real terrain change: camera backs the rangefinder", "good"],
   rf_fault: ["Rangefinder outvoted by camera + navigation", "good"],
-  rf_dropout: ["Rangefinder silent — flying on camera + navigation", "good"],
-  unresolved: ["Unresolved — assuming the closest ground", "bad"],
+  rf_dropout: ["Rangefinder silent: flying on camera + navigation", "good"],
+  unresolved: ["Unresolved: assuming the closest ground", "bad"],
   cam_fault: ["Camera outvoted by inertial + rangefinder", "good"],
   recovered: ["All sources agree", "good"],
 };

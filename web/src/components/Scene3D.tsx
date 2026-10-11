@@ -401,7 +401,7 @@ function Rig({ s }: { s: State }) {
       </group>
       <group ref={so} scale={1.08}>
         <Lander ghost={C.so} />
-        <Tag className={`tag-lander tag-so ${tone(err(s.so.est))}`}>SECOND OPINION {signed(err(s.so.est))} {unit()}</Tag>
+        <Tag className={`tag-lander tag-so ${tone(err(s.so.est))}`}>SUBSIDIUM {signed(err(s.so.est))} {unit()}</Tag>
       </group>
       <mesh ref={band}>
         <cylinderGeometry args={[0.78, 0.78, 1, 40, 1, true]} />

@@ -1,4 +1,4 @@
-// Second Opinion rig: winch stepper lowers the lander sled; Grove ultrasonic = the "laser rangefinder".
+// Subsidium rig: winch stepper lowers the lander sled; Grove ultrasonic = the "laser rangefinder".
 // Serial out (~20 Hz):  R,<millis>,<range_mm or -1>,<steps>
 // Serial in (1 char):   d = descend, u = up, s = stop, z = zero step counter
 //

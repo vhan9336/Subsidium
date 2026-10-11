@@ -1,0 +1,13 @@
+<!doctype html>
+<meta charset="utf-8">
+<link rel="stylesheet" href="slide.css">
+<title>Finding the odd one out</title>
+<h1>Finding the odd one out</h1>
+<p class="lead">The sensor that appears in both failing pairs is the one that is wrong.</p>
+<table>
+<tr><td>All three pairs agree</td><td>Fuse all three readings.</td></tr>
+<tr><td>One sensor fails with both others, and the other two agree</td><td>Exclude that sensor.</td></tr>
+<tr><td>Inertial fails, but rangefinder and camera agree</td><td>The ground really changed. Re-anchor inertial to the new altitude.</td></tr>
+<tr><td>All three pairs fail</td><td>Nobody can be blamed. Assume the closest ground.</td></tr>
+<tr><td>The rangefinder gives no echo</td><td>Check inertial against the camera.</td></tr>
+</table>

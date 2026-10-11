@@ -108,5 +108,5 @@ def test_hakuto_r_on_its_own_broadcast_telemetry():
     assert states[-1]["clip"]["id"] == "hakuto_r"
     assert any("terrain_change" in s["events"] for s in states)
     end = states[-1]
-    assert abs(end["so"]["est"] - end["truth"]) < 25            # Second Opinion is back on the true altitude
+    assert abs(end["so"]["est"] - end["truth"]) < 25            # Subsidium is back on the true altitude
     assert end["truth"] - end["legacy"]["est"] > 2400           # the legacy gate is 5 km (2500 mm) low

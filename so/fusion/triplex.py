@@ -1,4 +1,4 @@
-"""Second Opinion: 2-of-3 integrity monitor over three *dissimilar* altitude witnesses.
+"""Subsidium: 2-of-3 integrity monitor over three *dissimilar* altitude witnesses.
 
     NAV  inertial / dead-reckoned altitude      drifts; blind to terrain changes
     RF   rangefinder                            precise; can degrade, lag, freeze, drop out
@@ -38,7 +38,7 @@ STATUS = {
 
 
 class TriplexMonitor:
-    name = "Second Opinion"
+    name = "Subsidium"
 
     def __init__(self, cfg: dict):
         s, m = cfg["sensors"], cfg["monitor"]

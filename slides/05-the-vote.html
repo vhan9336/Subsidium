@@ -1,0 +1,12 @@
+<!doctype html>
+<meta charset="utf-8">
+<link rel="stylesheet" href="slide.css">
+<title>The vote</title>
+<h1>The vote</h1>
+<p class="lead">Every pair of sensors gets a test: are these two close enough to be measuring the same thing?</p>
+<ul>
+<li>For each pair, r² = (difference between the two altitudes)² ÷ (their combined uncertainty).</li>
+<li>The result is averaged over half a second. If it stays under the limit of 9 (three sigma), the pair agrees.</li>
+<li>There are three pairs: inertial and rangefinder, inertial and camera, rangefinder and camera.</li>
+<li>A verdict has to hold for 0.6 s before the software acts on it, so one noisy frame cannot flip it.</li>
+</ul>

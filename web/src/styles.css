@@ -280,3 +280,18 @@ h4 span { margin-left: 10px; font-weight: 400; font-size: 13px; color: var(--dim
   .node.flash circle { animation: none; }
   .lanes .marker, .view.is-thumb, .tape > * { transition: none; }
 }
+
+/* ---- walkthrough slides (E): html files from slides/, scaled to fit ---- */
+.deck .tools { display: flex; gap: 26px; justify-self: end; }
+.explain { position: fixed; inset: 0; z-index: 50; background: var(--bg); display: grid; grid-template-rows: auto minmax(0, 1fr) auto; padding: 0 var(--gutter) 18px; }
+.explain-top { display: flex; justify-content: space-between; align-items: baseline; padding: 14px 0 11px; border-bottom: 1px solid var(--rule); color: var(--dim); }
+.explain-top i { font-style: normal; margin-left: 6px; padding: 1px 6px; border: 1px solid var(--rule); color: var(--dim); }
+.stage-box { position: relative; min-height: 0; margin: 14px 0; }
+.stage-box.empty { display: grid; place-items: center; color: var(--dim); }
+.stage-box iframe { position: absolute; left: 50%; top: 50%; border: 0; transform-origin: center; background: var(--bg); }
+.explain-nav { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 24px; border-top: 1px solid var(--rule); padding-top: 14px; }
+.explain-nav > button { font: 600 16px var(--display); color: var(--ink); padding: 6px 4px; }
+.explain-nav > button:disabled { color: var(--faint); cursor: default; }
+.progress { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+.progress button { width: 28px; height: 4px; background: var(--rule); }
+.progress button.on { background: var(--so); }

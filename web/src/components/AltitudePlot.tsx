@@ -107,7 +107,7 @@ function draw(cv: HTMLCanvasElement, h: State[], range: { lo: number; hi: number
       g.fillText(EVENT_LABEL[e], left, e.startsWith("legacy") ? H - PAD.b - 10 : PAD.t + 4 + row * 14);
     }
 
-  // Second Opinion ±σ band
+  // Subsidium ±σ band
   g.fillStyle = "rgba(91,227,138,0.18)";
   let open = false;
   const closeBand = (from: number, to: number) => {

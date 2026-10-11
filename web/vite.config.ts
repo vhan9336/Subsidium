@@ -17,6 +17,8 @@ export default defineConfig({
       "/clips": engine,
       "/proof": engine,
       "/sites": engine,
+      "/slides": engine,
+      "/slides.json": engine,
     },
   },
 });

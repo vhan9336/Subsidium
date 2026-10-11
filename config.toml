@@ -1,4 +1,4 @@
-# Second Opinion configuration. Tune the [sensors] block from real rig runs (tools/stats.py).
+# Subsidium configuration. Tune the [sensors] block from real rig runs (tools/stats.py).
 
 [rig]
 spool_mm = 40.0            # winch spool diameter

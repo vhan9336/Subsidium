@@ -7,7 +7,7 @@ from __future__ import annotations
 from .pipeline import Pipeline
 from .sources.sim import SimSource
 
-# what Second Opinion must say for each replay
+# what Subsidium must say for each replay
 EXPECT = {
     "nominal": set(),
     "hakuto_r_m1": {"terrain_change"},
@@ -31,7 +31,7 @@ def run_one(cfg, mmps, sid, seconds=13.0):
 
 def run_all(cfg, mmps) -> bool:
     ok_all = True
-    print(f"{'scenario':14s} {'legacy max/final err':>22s}   {'second opinion max/final':>26s}   events")
+    print(f"{'scenario':14s} {'legacy max/final err':>22s}   {'Subsidium max/final':>26s}   events")
     for sid, want in EXPECT.items():
         st, events = run_one(cfg, mmps, sid)
         sc = st["score"]

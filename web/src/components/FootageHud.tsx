@@ -1,6 +1,6 @@
 // The software layer drawn over the camera image: what the picture is, what the camera estimator
 // is doing with it, the vote, and an altitude tape. The tape uses the same colours as everything
-// else: white line = true altitude, red = legacy gate, green = Second Opinion, dots = witnesses.
+// else: white line = true altitude, red = legacy gate, green = Subsidium, dots = witnesses.
 import { mm, niceStep, unit } from "../theme";
 import type { State } from "../types";
 
@@ -43,7 +43,7 @@ export default function FootageHud({ s, verdict, tone }: { s: State; verdict: st
           return w && <i key={k} className={`tape-dot ${k} ${s.so.excluded.includes(k) ? "out" : ""}`} style={at(w.h)} />;
         })}
         {s.legacy.est != null && <i className="tape-caret legacy" style={at(s.legacy.est)}><b>Legacy</b></i>}
-        {s.so.est != null && <i className="tape-caret so" style={at(s.so.est)}><b>Second Opinion</b></i>}
+        {s.so.est != null && <i className="tape-caret so" style={at(s.so.est)}><b>Subsidium</b></i>}
         <small>{unit()}</small>
       </div>
     </div>

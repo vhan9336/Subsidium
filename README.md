@@ -39,7 +39,7 @@ For dashboard development with hot reload, run `python -m so serve --sim` and `c
 ## Check everything
 ```bash
 python -m pytest tests          # camera accuracy, monitor logic, all replays, record→replay
-python -m so check              # scoreboard: legacy vs Second Opinion on every replay
+python -m so check              # scoreboard: legacy vs Subsidium on every replay
 python eval/run_video.py --selftest
 ```
 

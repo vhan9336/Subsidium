@@ -1,10 +1,10 @@
-# MASTERPROMPT — Second Opinion (hackPHS 2026)
+# MASTERPROMPT — Subsidium (hackPHS 2026)
 
 > Paste this into your AI coding assistant at the start of every session
 > (or save it as `CLAUDE.md` / `.cursorrules` in the repo root).
 
 ## What we are building
-**Second Opinion** is a 2-of-3 altitude integrity monitor for lunar landers.
+**Subsidium** is a 2-of-3 altitude integrity monitor for lunar landers.
 
 Recent commercial Moon landers crashed or tipped because they trusted the wrong altitude source (details in "Facts" below). We add a third, independent witness: a downward camera that measures **time-to-contact** (τ) from how fast the ground image expands. τ × descent rate = an altitude estimate that shares no hardware with the rangefinder.
 
@@ -17,7 +17,7 @@ The odd one out is excluded. If the disagreement can't be pinned on one witness,
 
 The dashboard runs two brains on the **same** sensor stream:
 - **Legacy gate:** the textbook logic that crashed HAKUTO-R.
-- **Second Opinion:** ours.
+- **Subsidium:** ours.
 
 The demo replays four real failures. The software runs first on a simulator; a tabletop rig (webcam plus ultrasonic sensor on a stepper winch) comes **last**.
 
@@ -112,7 +112,7 @@ docs/               AI_USE.md (keep updated)
    - *Done when* every replay's verdict can be read off the triangle alone.
 3. **AltitudePlot.tsx** (canvas, no chart library). Last 20 s from `history`:
    - truth (dotted white), rf (amber), nav (slate dashed), cam (cyan)
-   - legacy belief (red, thick), Second Opinion belief (green, thick) with σ band
+   - legacy belief (red, thick), Subsidium belief (green, thick) with σ band
 4. **BrainCard / ScenarioPanel polish.**
    - Show the scenario summary, the expected outcome and the operator **cue** in large text.
    - Show the scoreboard (`score.legacy/so.max` and `.last`).

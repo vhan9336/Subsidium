@@ -17,7 +17,7 @@ const WITNESS: Record<"nav" | "rf" | "cam", Lane> = {
   cam: { x: 290, name: "CAMERA", color: C.cam },
 };
 const LEGACY: Lane = { x: 432, name: "LEGACY GATE", color: C.legacy };
-const OURS: Lane = { x: 552, name: "SECOND OPINION", color: C.so };
+const OURS: Lane = { x: 552, name: "SUBSIDIUM", color: C.so };
 
 export default function Lanes({ s }: { s: State }) {
   const truth = s.truth;

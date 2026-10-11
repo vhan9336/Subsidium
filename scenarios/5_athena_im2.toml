@@ -1,10 +1,10 @@
 id = "athena_im2"
 name = "Athena (IM-2)"
 mission = "Intuitive Machines · March 2025"
-summary = "Altimeter interference plus long shadows and low-angle sunlight near the south pole challenged the landing system; Athena landed on its side in a crater. Cameras fail too — so the camera must be outvotable."
+summary = "Altimeter interference plus long shadows and low-angle sunlight near the south pole challenged the landing system; Athena landed on its side in a crater. Cameras fail too, so the camera has to be outvotable."
 source = "SpacePolicyOnline, IM-2 cause briefing"
 setup = "Flat ground. Optional: dim or switch off the lamp mid-descent instead of the injected fault."
-expect = "The camera misjudges time-to-contact. Second Opinion: inertial + rangefinder outvote the camera. Lamp off: the camera abstains instead of guessing."
+expect = "The camera misjudges time-to-contact. Subsidium: inertial + rangefinder outvote the camera. Lamp off: the camera abstains instead of guessing."
 site = "scenarios/sites/athena_im2.jpg"
 site_note = "Ground: NASA LRO image M1496181900 of the actual landing site on Mons Mouton with Athena in its crater, 1175 m across. Credit NASA/GSFC/Arizona State University."
 broadcast = "footage/broadcasts/athena_im2.mp4"
@@ -13,5 +13,5 @@ broadcast_note = "NASA's official broadcast of the IM-2 landing, 6 March 2025: t
 steps = [
   { at = 0.0, do = ["fault:clear", "terrain_down", "reset"] },
   { at = 0.5, do = ["descend"] },
-  { at = 3.5, do = ["fault:cam_bias"], cue = "Camera misjudging in harsh shadow (injected) — or switch the lamp off" },
+  { at = 3.5, do = ["fault:cam_bias"], cue = "Camera misjudging in harsh shadow (injected). Or switch the lamp off" },
 ]

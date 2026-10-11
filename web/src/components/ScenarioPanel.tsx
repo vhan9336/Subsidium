@@ -18,13 +18,14 @@ const FAULTS: [string, string][] = [
   ["cam_blind", "Camera blind"],
 ];
 
-export default function ScenarioPanel({ s, scenarios, voiceOn, onVoice, proof, onProof }: {
+export default function ScenarioPanel({ s, scenarios, voiceOn, onVoice, proof, onProof, onExplain }: {
   s: State | null;
   scenarios: ScenarioInfo[];
   voiceOn: boolean;
   onVoice: () => void;
   proof: boolean;
   onProof: () => void;
+  onExplain: () => void;
 }) {
   const active = s?.scenario ?? null;
   const mixed = scenarios.some((sc) => sc.footage); // real footage is loaded: say what each replay flies on
@@ -39,7 +40,10 @@ export default function ScenarioPanel({ s, scenarios, voiceOn, onVoice, proof, o
           </button>
         ))}
       </nav>
-      <button className={`math ${proof ? "on" : ""}`} onClick={onProof}>{proof ? "Back to the landing" : "The math"} <i>M</i></button>
+      <span className="tools">
+        <button className="math" onClick={onExplain}>Walkthrough <i>E</i></button>
+        <button className={`math ${proof ? "on" : ""}`} onClick={onProof}>{proof ? "Back to the landing" : "The math"} <i>M</i></button>
+      </span>
       {proof && <div className="manual">
         <span className="label">Fly by hand</span>
         {MOTION.map(([key, name, c]) => (

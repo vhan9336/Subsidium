@@ -61,7 +61,7 @@ def main():
         src = LiveSource(args.port, mmps, args.cam if args.cam is not None else cam["index"],
                          cam["width"], cam["height"], cfg["rig"]["baud"])
     app = create_app(Pipeline(cfg, src))
-    print(f"Second Opinion ({src.kind}) → http://localhost:{args.http_port}")
+    print(f"Subsidium ({src.kind}) → http://localhost:{args.http_port}")
     uvicorn.run(app, host=args.host, port=args.http_port, log_level="warning")
 
 

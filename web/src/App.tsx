@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import CameraFeed from "./components/CameraFeed";
+import Explain from "./components/Explain";
 import FootageHud from "./components/FootageHud";
 import Proof from "./components/Proof";
 import ScenarioPanel from "./components/ScenarioPanel";
@@ -24,8 +25,8 @@ function headline(s: State, log: Logged[]): [string, Tone] {
   const so = s.so;
   if (so.status.startsWith("UNRESOLVED")) return ["The sensors disagree and none can be singled out. Assuming the closest ground.", "warn"];
   if (so.status.startsWith("RANGEFINDER SILENT")) return ["The rangefinder is silent. Inertial is being checked against the camera.", "warn"];
-  if (so.excluded.includes("rf")) return ["The rangefinder was outvoted two to one. Second Opinion is ignoring it.", "good"];
-  if (so.excluded.includes("cam")) return ["The camera was outvoted two to one. Second Opinion is ignoring it.", "good"];
+  if (so.excluded.includes("rf")) return ["The rangefinder was outvoted two to one. Subsidium is ignoring it.", "good"];
+  if (so.excluded.includes("cam")) return ["The camera was outvoted two to one. Subsidium is ignoring it.", "good"];
   if (log.some((e) => e.key === "terrain_change")) return ["The ground really did change. Camera and rangefinder outvoted inertial.", "good"];
   if (s.legacy.status !== "NOMINAL") return ["The legacy gate is rejecting its rangefinder.", "bad"];
   if (so.cam_abstain) return [s.v > 1 ? "The camera has no lock. Inertial and rangefinder agree." : "Standing by. The camera locks on once the descent starts.", "idle"];
@@ -49,9 +50,9 @@ function consequence(legacyErr: number | null, soErr: number | null): string {
   if (legacyErr == null || soErr == null) return "";
   const l = Math.abs(legacyErr) > ERR_BAD_MM;
   const o = Math.abs(soErr) > ERR_BAD_MM;
-  if (l && !o) return `The legacy gate believes it is ${off(legacyErr)}. Second Opinion is on the true altitude.`;
-  if (l && o) return `The legacy gate is ${off(legacyErr)}; Second Opinion is ${off(soErr)}.`;
-  if (o) return `Second Opinion is ${off(soErr)}; the legacy gate is on the true altitude.`;
+  if (l && !o) return `The legacy gate believes it is ${off(legacyErr)}. Subsidium is on the true altitude.`;
+  if (l && o) return `The legacy gate is ${off(legacyErr)}; Subsidium is ${off(soErr)}.`;
+  if (o) return `Subsidium is ${off(soErr)}; the legacy gate is on the true altitude.`;
   return "Both brains are on the true altitude.";
 }
 
@@ -61,6 +62,7 @@ export default function App() {
   const [voiceOn, setVoiceOn] = useState(false);
   const [picked, setPicked] = useState<View | null>(null);
   const [proof, setProof] = useState(false);
+  const [explain, setExplain] = useState(false);
   const { state: s, connected, history } = useTelemetry((key: string, st: State) => {
     voice.say(key);
     if (EVENT_LABEL[key]) setLog((l) => [...l.filter((e) => e.t <= st.t).slice(-8), { key, t: st.t }]);
@@ -94,6 +96,7 @@ export default function App() {
       if (e.ctrlKey || e.metaKey || e.altKey || e.repeat) return;
       const k = e.key.toLowerCase();
       if (k === "v") setVoiceOn(voice.toggle());
+      else if (k === "e") setExplain(true);
       else if (k === "m") setProof((p) => !p);
       else if (k === "escape") setProof(false);
       else if (k === "c") cycle.current();
@@ -117,7 +120,7 @@ export default function App() {
   return (
     <div className="app">
       <header className="bar">
-        <h1>Second Opinion</h1>
+        <h1>Subsidium</h1>
         <p>Three sensors report altitude. The odd one out is outvoted.</p>
         <div className="bar-right">
           {s?.faults.map((f) => <span key={f} className="fault">Injected fault: {f.replace("_", " ")}</span>)}
@@ -147,7 +150,7 @@ export default function App() {
             <aside className="right">
               <p className="mission">
                 {sc ? <><b>{sc.name}</b> {sc.mission}</> : clip ? <><b>{clip.name}</b> {clip.mission}</>
-                  : <>Press <b>1</b> to <b>{Math.max(scenarios.length, 1)}</b> to replay a landing through both brains.</>}
+                  : <>Press <b>1</b> to <b>{Math.max(scenarios.length, 1)}</b> to replay a landing through both brains. Press <b>E</b> for a slide walkthrough.</>}
               </p>
               <h2 className={tone}>{line}</h2>
               <p className="then">{consequence(legacyErr, soErr)}</p>
@@ -164,7 +167,7 @@ export default function App() {
                   <dd>{mm(s.legacy.est)}<em>{signed(legacyErr)}</em></dd>
                 </div>
                 <div className={`k-so ${Math.abs(soErr ?? 0) > ERR_BAD_MM ? "bad" : ""}`}>
-                  <dt>Second Opinion <span>{plainStatus(s.so.status, "so")}</span></dt>
+                  <dt>Subsidium <span>{plainStatus(s.so.status, "so")}</span></dt>
                   <dd>{mm(s.so.est)}<em>{signed(soErr)}</em></dd>
                 </div>
               </dl>
@@ -184,9 +187,9 @@ export default function App() {
                 <div><dt>Tracking quality</dt><dd>{s.q_raw.toFixed(2)}</dd></div>
               </dl>
               <p>
-                Time-to-contact assumes a steady approach straight toward the surface, so treat this number as
-                indicative. No altitude record was published with this video, so the rangefinder and inertial
-                witnesses have nothing honest to be built from.
+                Time to contact assumes a steady approach straight toward the surface, so read this number as a
+                rough guide. This video came with no altitude record, so there is nothing real to build the
+                rangefinder and inertial readings from.
               </p>
             </aside>
           )}
@@ -198,7 +201,8 @@ export default function App() {
         </main>
       )}
 
-      <ScenarioPanel s={s} scenarios={scenarios} voiceOn={voiceOn} onVoice={toggleVoice} proof={proof} onProof={() => setProof((p) => !p)} />
+      <ScenarioPanel s={s} scenarios={scenarios} voiceOn={voiceOn} onVoice={toggleVoice} proof={proof} onProof={() => setProof((p) => !p)} onExplain={() => setExplain(true)} />
+      {explain && <Explain onClose={() => setExplain(false)} />}
     </div>
   );
 }

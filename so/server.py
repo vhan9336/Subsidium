@@ -9,6 +9,7 @@
                     scenario:<id|stop> | record_start | record_stop | clip:<id>
   GET  /scenarios   mission replay list
   GET  /clips       real-footage clips (only with `serve --video`)
+  GET  /slides.json  slide files in order; the files themselves are under /slides/
   GET  /proof       tuned constants + headless scorecard for the proof screen
 """
 from __future__ import annotations
@@ -28,7 +29,7 @@ from .pipeline import Pipeline
 
 
 def create_app(pipe: Pipeline, loop_replay: bool = False) -> FastAPI:
-    app = FastAPI(title="Second Opinion")
+    app = FastAPI(title="Subsidium")
     shared = {"state": {}, "events": [], "jpeg": b""}
     lock = threading.Lock()
 
@@ -56,6 +57,15 @@ def create_app(pipe: Pipeline, loop_replay: bool = False) -> FastAPI:
     for name, folder in (("sites", ROOT / "scenarios" / "sites"), ("broadcasts", ROOT / "footage" / "broadcasts")):
         if folder.exists():
             app.mount(f"/{name}", StaticFiles(directory=folder), name=name)
+
+    slides = ROOT / "slides"
+    if slides.exists():
+        app.mount("/slides", StaticFiles(directory=slides), name="slides")
+
+    @app.get("/slides.json")
+    def slide_list():
+        """Slide files in alphabetical order; a leading underscore hides one (see slides/README.md)."""
+        return sorted(f.name for f in slides.glob("*.html") if not f.name.startswith("_")) if slides.exists() else []
 
     @app.get("/")
     def index():

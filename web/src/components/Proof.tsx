@@ -23,10 +23,10 @@ type ProofData = {
 const NAME = { nav: "Inertial", rf: "Rangefinder", cam: "Camera" } as const;
 const PAIRS = [["nav", "rf"], ["nav", "cam"], ["rf", "cam"]] as const;
 const RULES: [string, string, (st: string) => boolean][] = [
-  ["all three pairs pass", "all agree: fuse all three", (st) => st.startsWith("NOMINAL")],
-  ["inertial–rangefinder ✗, inertial–camera ✗, rangefinder–camera ✓", "inertial is wrong (the ground changed): re-anchor it", () => false],
-  ["inertial–rangefinder ✗, rangefinder–camera ✗, inertial–camera ✓", "rangefinder is wrong: exclude it", (st) => st.startsWith("RANGEFINDER EXCLUDED")],
-  ["inertial–camera ✗, rangefinder–camera ✗, inertial–rangefinder ✓", "camera is wrong: exclude it", (st) => st.startsWith("CAMERA EXCLUDED")],
+  ["all three pairs agree", "all agree: fuse all three", (st) => st.startsWith("NOMINAL")],
+  ["inertial fails with both others, rangefinder and camera agree", "inertial is wrong (the ground changed): re-anchor it", () => false],
+  ["rangefinder fails with both others, inertial and camera agree", "rangefinder is wrong: exclude it", (st) => st.startsWith("RANGEFINDER EXCLUDED")],
+  ["camera fails with both others, inertial and rangefinder agree", "camera is wrong: exclude it", (st) => st.startsWith("CAMERA EXCLUDED")],
   ["all three pairs fail", "cannot tell: assume the closest ground", (st) => st.startsWith("UNRESOLVED")],
   ["rangefinder gives no echo", "check inertial against the camera", (st) => st.startsWith("RANGEFINDER SILENT")],
 ];
@@ -99,7 +99,7 @@ export default function Proof({ s, history, reanchored }: { s: State; history: M
         </p>
         <p className="fine">
           τ is the time to contact, read from how fast the image grows between two frames {cfg?.camera.lookback_s ?? "—"} s apart:
-          τ = Δt ÷ (scale − 1). No map, no known size, no laser.
+          τ = Δt ÷ (scale − 1). It needs no map, no known object size and no laser.
           {s.clip?.camera === "reconstructed"
             ? " This footage has no descent camera in it, so here τ is reconstructed from the true altitude, not measured."
             : s.clip ? ` Measured on the footage; × ${s.clip.tau_gain} corrects for this camera not pointing straight down. Lock quality ${s.q_raw.toFixed(2)}.`
@@ -118,7 +118,7 @@ export default function Proof({ s, history, reanchored }: { s: State; history: M
               const gap = w[a] && w[b] ? Math.abs(w[a]!.h - w[b]!.h) : null;
               return (
                 <tr key={a + b}>
-                  <td>{NAME[a]} – {NAME[b]}</td>
+                  <td>{NAME[a]} vs {NAME[b]}</td>
                   <td>{mm(gap)}</td>
                   <td>{r == null ? "no test" : r.toFixed(2)}</td>
                   <td>{s.so.gate.toFixed(1)}</td>
@@ -150,21 +150,21 @@ export default function Proof({ s, history, reanchored }: { s: State; history: M
         {cfg && (
           <p className="fine">
             Follow inertial. Accept the rangefinder only if it is within {cfg.legacy.gate_mm} mm of that; then move {cfg.legacy.alpha * 100}% toward it.
-            After {cfg.legacy.fail_after} rejections in a row, declare the rangefinder failed and never listen to it again. It has no third opinion.
+            After {cfg.legacy.fail_after} rejections in a row, declare the rangefinder failed and never listen to it again. It has no third opinion to check against.
           </p>
         )}
         <table>
           <thead><tr><th /><th>Believes</th><th>Off truth</th><th>Worst</th><th>Status</th></tr></thead>
           <tbody>
             <tr><td className="legacy">Legacy gate</td><td>{mm(s.legacy.est)}</td><td>{signed(err(s.legacy.est))}</td><td>{mm(s.score.legacy.max)}</td><td>{s.legacy.status}</td></tr>
-            <tr><td className="so">Second Opinion</td><td>{mm(s.so.est)}</td><td>{signed(err(s.so.est))}</td><td>{mm(s.score.so.max)}</td><td>± {mm(s.so.sigma)}</td></tr>
+            <tr><td className="so">Subsidium</td><td>{mm(s.so.est)}</td><td>{signed(err(s.so.est))}</td><td>{mm(s.score.so.max)}</td><td>± {mm(s.so.sigma)}</td></tr>
           </tbody>
         </table>
 
         <h4>6. Every replay, scored <span>simulator, engine mm · same as <code>python -m so check</code></span></h4>
         {data?.scorecard ? (
           <table>
-            <thead><tr><th>Replay</th><th>Legacy worst / final</th><th>Second Opinion worst / final</th><th /></tr></thead>
+            <thead><tr><th>Replay</th><th>Legacy worst / final</th><th>Subsidium worst / final</th><th /></tr></thead>
             <tbody>
               {data.scorecard.map((r) => (
                 <tr key={r.id}>
