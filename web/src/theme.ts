@@ -53,6 +53,10 @@ export function signed(v: number | null | undefined) {
   return `${r > 0 ? "+" : r < 0 ? "−" : "±"}${show(Math.abs(r))}`;
 }
 
+/** Seconds until the ground at the current descent speed, or null when the lander isn't descending. */
+export const timeToContact = (altitude: number | null | undefined, speed: number) =>
+  altitude == null || speed <= 1 ? null : Math.max(altitude, 0) / speed;
+
 /** A gridline spacing (engine mm) that gives about six lines up to `top`. */
 export const niceStep = (top: number) => [25, 50, 100, 250, 500, 1000, 2500, 5000].find((s) => top / s <= 6.5) ?? 10000;
 

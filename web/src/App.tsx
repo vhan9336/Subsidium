@@ -7,7 +7,7 @@ import Proof from "./components/Proof";
 import ScenarioPanel from "./components/ScenarioPanel";
 import Scene3D from "./components/Scene3D";
 import { cmd, useTelemetry } from "./telemetry";
-import { ERR_BAD_MM, EVENT_LABEL, mm, plainStatus, setUnit, signed, unit } from "./theme";
+import { ERR_BAD_MM, EVENT_LABEL, mm, plainStatus, setUnit, signed, timeToContact, unit } from "./theme";
 import type { ScenarioInfo, State } from "./types";
 import { voice } from "./voice";
 
@@ -57,6 +57,21 @@ function consequence(legacyErr: number | null, soErr: number | null): string {
   if (legacyBad && soBad) return `The legacy gate is ${off(legacyErr)}; Subsidium is ${off(soErr)}.`;
   if (soBad) return `Subsidium is ${off(soErr)}; the legacy gate is on the true altitude.`;
   return "Both brains are on the true altitude.";
+}
+
+/**
+ * When a brain thinks the ground will arrive, at the current descent speed. For a brain's own
+ * estimate it also says how far that is from the real time, so a gate that believes it is lower
+ * than it is reads as "early".
+ */
+function contactLine(altitude: number | null, truth: number | null, speed: number): string {
+  const predicted = timeToContact(altitude, speed);
+  if (predicted == null) return "";
+  const text = `contact in ${predicted.toFixed(1)} s`;
+  const actual = timeToContact(truth, speed);
+  if (actual == null || altitude === truth) return text;
+  const off = predicted - actual;
+  return Math.abs(off) < 0.05 ? `${text}, on time` : `${text}, ${Math.abs(off).toFixed(1)} s ${off < 0 ? "early" : "late"}`;
 }
 
 export default function App() {
@@ -166,15 +181,15 @@ export default function App() {
 
               <dl className="three">
                 <div className="k-truth">
-                  <dt>True altitude</dt>
+                  <dt>True altitude <span>{contactLine(s.truth, null, s.v) || "actual contact time appears once it descends"}</span></dt>
                   <dd>{mm(s.truth)}<small> {unit()}</small></dd>
                 </div>
                 <div className={`k-legacy ${badClass(legacyErr)}`}>
-                  <dt>Legacy gate <span>{plainStatus(s.legacy.status, "legacy")}</span></dt>
+                  <dt>Legacy gate <span>{plainStatus(s.legacy.status, "legacy")}<br />{contactLine(s.legacy.est, s.truth, s.v)}</span></dt>
                   <dd>{mm(s.legacy.est)}<em>{signed(legacyErr)}</em></dd>
                 </div>
                 <div className={`k-so ${badClass(soErr)}`}>
-                  <dt>Subsidium <span>{plainStatus(s.so.status, "so")}</span></dt>
+                  <dt>Subsidium <span>{plainStatus(s.so.status, "so")}<br />{contactLine(s.so.est, s.truth, s.v)}</span></dt>
                   <dd>{mm(s.so.est)}<em>{signed(soErr)}</em></dd>
                 </div>
               </dl>
